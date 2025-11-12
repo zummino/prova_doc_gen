@@ -1,0 +1,720 @@
+@startuml 
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "archlib" {
+  class "arch::ROSComponentDescriptor" as ROSCD {
+    - name : std::string
+    - freq : double
+    --
+    + setName(name : std::string) : void
+    + getName() : std::string
+    + setFreq(freq : double) : void
+    + getFreq() : double
+  }
+
+  abstract class "arch::ROSComponent" as ROSC {
+    - rosComponentDescriptor : arch::ROSComponentDescriptor
+    --
+    + ROSComponent(argc:int&, argv:char**, name:std::string)
+    + ~ROSComponent()
+    + setUp() : void
+    + tearDown() : void
+    + run() : int32_t
+    + body() : void
+    # getRosNodeName(node_name:std::string, node_namespace:std::string) : std::string
+  }
+
+  ROSC *-- ROSCD
+}
+
+package "archlib::target_system" {
+  abstract class "arch::target_system::Component" as TSComp {
+    - handle : ros::NodeHandle
+    - status : bool
+    - collect_event : ros::Publisher
+    - collect_status : ros::Publisher
+    - collect_energy_status : ros::Publisher
+    - effect : ros::Subscriber
+    --
+    + Component(argc:int&, argv:char**, name:std::string)
+    + ~Component()
+    + setUp() : void
+    + tearDown() : void
+    + run() : int32_t
+    + body() : void
+    + sendEvent(content:std::string) : void
+    + sendStatus(content:std::string) : void
+    + sendEnergyStatus(cost:double) : void
+    + reconfigure(msg:archlib::AdaptationCommand::ConstPtr&) : void
+    # activate() : void
+    # deactivate() : void
+    {static} - shutdownComponent() : void
+    {static} - sigIntHandler(signal:int) : void
+  }
+
+  abstract class "arch::target_system::Effector" as TSEff {
+    - handle : ros::NodeHandle
+    --
+    + Effector(argc:int&, argv:char**, name:std::string)
+    + ~Effector()
+    + setUp() : void
+    + tearDown() : void
+    + receiveAdaptationCommand(msg:archlib::AdaptationCommand::ConstPtr&) : void
+  }
+
+  abstract class "arch::target_system::Probe" as TSProbe {
+    - handle : ros::NodeHandle
+    - collect_event : ros::Subscriber
+    - collect_status : ros::Subscriber
+    - collect_energy_status : ros::Subscriber
+    - log_event : ros::Publisher
+    - log_status : ros::Publisher
+    - log_energy_status : ros::Publisher
+    --
+    + Probe(argc:int&, argv:char**, name:std::string)
+    + ~Probe()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    + collectEvent(msg:archlib::Event::ConstPtr&) : void
+    + collectStatus(msg:archlib::Status::ConstPtr&) : void
+    + collectEnergyStatus(msg:archlib::EnergyStatus::ConstPtr&) : void
+  }
+
+  TSComp -up-|> ROSC
+  TSEff -up-|> ROSC
+  TSProbe -up-|> ROSC
+}
+
+package "sa-bsn::target_system::effectors" {
+  class "ParamAdapter" as ParamAdapter {
+    - register_service : ros::ServiceServer
+    - target_arr : std::map<std::string, ros::Publisher>
+    --
+    + ParamAdapter(argc:int&, argv:char**, name:std::string)
+    + ~ParamAdapter()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    + receiveAdaptationCommand(msg:archlib::AdaptationCommand::ConstPtr&) : void
+    + moduleConnect(req:archlib::EffectorRegister::Request&, res:archlib::EffectorRegister::Response&) : bool
+  }
+
+  ParamAdapter -up-|> TSEff
+}
+
+package "libbsn" {
+  package "libbsn::resource" {
+    class "bsn::resource::Battery" as Battery {
+      - id : std::string
+      - capacity : double
+      - currentLevel : double
+      - unit : double
+      --
+      + Battery(id:std::string, capacity:double, currentLevel:double, unit:double)
+      + consume(mult:double) : void
+      + generate(mult:double) : void
+      + getCurrentLevel() : double
+      + getCapacity() : double
+      + getUnit() : double
+      + getId() : std::string
+    }
+  }
+
+  package "libbsn::range" {
+    class "bsn::range::Range" as Range {
+      - lowerBound : double
+      - upperBound : double
+      --
+      + Range()
+      + Range(l:double, u:double)
+      + in_range(element:double) : bool
+      + convert(new_lb:double, new_ub:double, input:double) : double
+      + getLowerBound() : double
+      + getUpperBound() : double
+    }
+  }
+
+  package "libbsn::filters" {
+    class "bsn::filters::MovingAverage" as MovingAverage {
+      - computedAverage : double
+      - lastInserted : double
+      - range : uint32_t
+      - buffer : std::list<double>
+      --
+      + MovingAverage()
+      + MovingAverage(max:int32_t)
+      + getValue() : double
+      + insert(value:double) : void
+      + getRange() : uint32_t
+      + getBuffer() : std::list<double>
+    }
+  }
+
+  package "libbsn::generator" {
+    class "bsn::generator::Markov" as Markov {
+      + transitions : std::array<float,25>
+      + currentState : int32_t
+      + states : std::array<bsn::range::Range,5>
+      --
+      + Markov()
+      + next_state() : void
+      + calculate_state() : double
+    }
+
+    class "bsn::generator::DataGenerator" as DataGenerator {
+      - markovChain : Markov
+      - value : double
+      - seed : std::mt19937
+      --
+      + DataGenerator()
+      + DataGenerator(markov:Markov)
+      + getValue() : double
+      + setSeed() : void
+      + nextState() : void
+    }
+
+    DataGenerator *-- Markov
+  }
+
+  package "libbsn::configuration" {
+    class "bsn::configuration::SensorConfiguration" as SensorConfiguration {
+      - id : int32_t
+      - lowRisk : bsn::range::Range
+      - mediumRisk : std::array<bsn::range::Range,2>
+      - highRisk : std::array<bsn::range::Range,2>
+      - lowPercentage : bsn::range::Range
+      - midPercentage : bsn::range::Range
+      - highPercentage : bsn::range::Range
+      --
+      + evaluateNumber(number:double) : double
+      + getDisplacement(range:bsn::range::Range, number:double, logic:std::string="crescent") : double
+      + convertRealPercentage(range:bsn::range::Range, number:double) : double
+      + isLowRisk(val:double) : bool
+      + isMediumRisk(val:double) : bool
+      + isHighRisk(val:double) : bool
+    }
+
+    SensorConfiguration *-- Range
+  }
+
+  package "libbsn::model" {
+    class "bsn::model::Formula" as Formula {
+      - expression : Lepton::CompiledExpression
+      - term_value : std::map<std::string,double>
+      --
+      + Formula()
+      + Formula(text:std::string)
+      + Formula(text:std::string, terms:std::vector<std::string>, values:std::vector<double>)
+      + setTermValueMap(terms:std::vector<std::string>, values:std::vector<double>) : void
+      + setTermValueMap(map:std::map<std::string,double>) : void
+      + evaluate() : double
+      + getTerms() : std::vector<std::string>
+    }
+  }
+
+  package "libbsn::processor" {
+    class "bsn::processor::Processor" as Processor <<static>> {
+      + data_fuse(values:std::vector<double>) : double
+      + get_sensor_id(type:std::string) : int32_t
+      + get_value(packet:std::string) : double
+    }
+  }
+}
+
+package "sa-bsn::target_system::components" {
+  abstract class "Sensor" as BsnSensor {
+    - type : std::string
+    - active : bool
+    - buffer_size : int
+    - replicate_collect : int
+    - noise_factor : double
+    - battery : bsn::resource::Battery
+    - data : double
+    - instant_recharge : bool
+    - shouldStart : bool
+    - cost : double
+    --
+    + Sensor(argc:int&, argv:char**, name:std::string, type:std::string, active:bool, noise_factor:double, battery:bsn::resource::Battery, instant_recharge:bool)
+    + ~Sensor()
+    + setUp() : void
+    + tearDown() : void
+    + run() : int32_t
+    + body() : void
+    + reconfigure(msg:archlib::AdaptationCommand::ConstPtr&) : void
+    + injectUncertainty(msg:archlib::Uncertainty::ConstPtr&) : void
+    + collect() : double
+    + process(data:double) : double
+    + transfer(data:double) : void
+    # apply_noise(data:double&) : void
+    # isActive() : bool
+    # turnOn() : void
+    # turnOff() : void
+    # recharge() : void
+  }
+
+  abstract class "CentralHub" as CentralHub {
+    - active : bool
+    - max_size : int
+    - total_buffer_size : int
+    - buffer_size : std::array<int,6>
+    - battery : bsn::resource::Battery
+    - data_buffer : std::vector<std::list<double>>
+    --
+    + CentralHub(argc:int&, argv:char**, name:std::string, active:bool, battery:bsn::resource::Battery)
+    + ~CentralHub()
+    + setUp() : void
+    + tearDown() : void
+    + run() : int32_t
+    + body() : void
+    + reconfigure(msg:archlib::AdaptationCommand::ConstPtr&) : void
+    + collect(sensor_data:messages::SensorData::ConstPtr&) : void
+    + process() : void
+    + transfer() : void
+    # isActive() : bool
+    # turnOn() : void
+    # turnOff() : void
+    # recharge() : void
+    # apply_noise() : void
+  }
+
+  BsnSensor -up-|> TSComp
+  CentralHub -up-|> TSComp
+
+  class "G3T1_1" as G3T1_1 {
+    - markov : bsn::generator::Markov
+    - dataGenerator : bsn::generator::DataGenerator
+    - filter : bsn::filters::MovingAverage
+    - sensorConfig : bsn::configuration::SensorConfiguration
+    - handle : ros::NodeHandle
+    - data_pub : ros::Publisher
+    - collected_risk : double
+    --
+    + setUp() : void
+    + tearDown() : void
+    + collect() : double
+    + process(data:double) : double
+    + transfer(data:double) : void
+    - label(risk:double&) : std::string
+  }
+
+  class "G3T1_2" as G3T1_2 {
+    - markov : bsn::generator::Markov
+    - dataGenerator : bsn::generator::DataGenerator
+    - filter : bsn::filters::MovingAverage
+    - sensorConfig : bsn::configuration::SensorConfiguration
+    - handle : ros::NodeHandle
+    - data_pub : ros::Publisher
+    - client : ros::ServiceClient
+    - collected_risk : double
+    --
+    + setUp() : void
+    + tearDown() : void
+    + collect() : double
+    + process(data:double) : double
+    + transfer(data:double) : void
+    - label(risk:double&) : std::string
+  }
+
+  class "G3T1_3" as G3T1_3 {
+    - markov : bsn::generator::Markov
+    - dataGenerator : bsn::generator::DataGenerator
+    - filter : bsn::filters::MovingAverage
+    - sensorConfig : bsn::configuration::SensorConfiguration
+    - handle : ros::NodeHandle
+    - data_pub : ros::Publisher
+    - client : ros::ServiceClient
+    - collected_risk : double
+    --
+    + setUp() : void
+    + tearDown() : void
+    + collect() : double
+    + process(data:double) : double
+    + transfer(data:double) : void
+    - label(risk:double&) : std::string
+  }
+
+  class "G3T1_4" as G3T1_4 {
+    - markov : bsn::generator::Markov
+    - dataGenerator : bsn::generator::DataGenerator
+    - filter : bsn::filters::MovingAverage
+    - sensorConfig : bsn::configuration::SensorConfiguration
+    - handle : ros::NodeHandle
+    - data_pub : ros::Publisher
+    - client : ros::ServiceClient
+    - collected_risk : double
+    --
+    + setUp() : void
+    + tearDown() : void
+    + collect() : double
+    + process(data:double) : double
+    + transfer(data:double) : void
+    - label(risk:double&) : std::string
+  }
+
+  class "G3T1_5" as G3T1_5 {
+    - markov : bsn::generator::Markov
+    - dataGenerator : bsn::generator::DataGenerator
+    - filter : bsn::filters::MovingAverage
+    - sensorConfig : bsn::configuration::SensorConfiguration
+    - handle : ros::NodeHandle
+    - data_pub : ros::Publisher
+    - client : ros::ServiceClient
+    - collected_risk : double
+    --
+    + setUp() : void
+    + tearDown() : void
+    + collect() : double
+    + process(data:double) : double
+    + transfer(data:double) : void
+    - label(risk:double&) : std::string
+  }
+
+  class "G3T1_6" as G3T1_6 {
+    - markov : bsn::generator::Markov
+    - dataGenerator : bsn::generator::DataGenerator
+    - filter : bsn::filters::MovingAverage
+    - sensorConfig : bsn::configuration::SensorConfiguration
+    - handle : ros::NodeHandle
+    - data_pub : ros::Publisher
+    - client : ros::ServiceClient
+    - collected_risk : double
+    --
+    + setUp() : void
+    + tearDown() : void
+    + collect() : double
+    + process(data:double) : double
+    + transfer(data:double) : void
+    - label(risk:double&) : std::string
+  }
+
+  class "G4T1" as G4T1 {
+    - patient_status : double
+    - abps_risk, abpd_risk, oxi_risk, ecg_risk, trm_risk, glc_risk : double
+    - abps_batt, abpd_batt, oxi_batt, ecg_batt, trm_batt, glc_batt : double
+    - abps_raw, abpd_raw, oxi_raw, ecg_raw, trm_raw, glc_raw : double
+    - pub : ros::Publisher
+    - lost_packt : bool
+    --
+    + setUp() : void
+    + tearDown() : void
+    + collect(sensor_data:messages::SensorData::ConstPtr&) : void
+    + process() : void
+    + transfer() : void
+    - getPatientStatus() : std::vector<std::string>
+    - getSensorId(type:std::string) : int32_t
+  }
+
+  G3T1_1 -up-|> BsnSensor
+  G3T1_2 -up-|> BsnSensor
+  G3T1_3 -up-|> BsnSensor
+  G3T1_4 -up-|> BsnSensor
+  G3T1_5 -up-|> BsnSensor
+  G3T1_6 -up-|> BsnSensor
+  G4T1   -up-|> CentralHub
+
+  ' Sensors composition/dependencies
+  BsnSensor *-- Battery
+  BsnSensor *-- MovingAverage
+  BsnSensor *-- SensorConfiguration
+  BsnSensor *-- DataGenerator
+  CentralHub *-- Battery
+  G4T1 ..> Processor : uses
+}
+
+package "sa-bsn::knowledge_repository::data_access" {
+  class "StatusMessage" as StatusMessage {
+    - name : std::string
+    - timestamp : int64_t
+    - logical_clock : int64_t
+    - source : std::string
+    - target : std::string
+    - state : std::string
+  }
+  class "EnergyStatusMessage" as EnergyStatusMessage {
+    - name : std::string
+    - timestamp : int64_t
+    - logical_clock : int64_t
+    - source : std::string
+    - target : std::string
+    - cost : std::string
+  }
+  class "EventMessage" as EventMessage {
+    - name : std::string
+    - timestamp : int64_t
+    - logical_clock : int64_t
+    - source : std::string
+    - target : std::string
+    - event : std::string
+  }
+  class "UncertaintyMessage" as UncertaintyMessage {
+    - name : std::string
+    - timestamp : int64_t
+    - logical_clock : int64_t
+    - source : std::string
+    - target : std::string
+    - content : std::string
+  }
+  class "AdaptationMessage" as AdaptationMessage {
+    - name : std::string
+    - timestamp : int64_t
+    - logical_clock : int64_t
+    - source : std::string
+    - target : std::string
+    - content : std::string
+  }
+
+  class "DataAccess" as DataAccess {
+    - handle : ros::NodeHandle
+    - handle_persist : ros::Subscriber
+    - targetSystemSub : ros::Subscriber
+    - server : ros::ServiceServer
+    - fp : std::fstream
+    - event_filepath, status_filepath, energy_status_filepath, uncertainty_filepath, adaptation_filepath : std::string
+    - logical_clock : int64_t
+    - statusVec : std::vector<StatusMessage>
+    - energystatusVec : std::vector<EnergyStatusMessage>
+    - eventVec : std::vector<EventMessage>
+    - uncertainVec : std::vector<UncertaintyMessage>
+    - adaptVec : std::vector<AdaptationMessage>
+    - status : std::map<std::string, std::deque<std::pair<std::chrono::high_resolution_clock::time_point,std::string>>>
+    - events : std::map<std::string, std::deque<std::string>>
+    - buffer_size : int
+    - components_reliabilities : std::map<std::string,double>
+    - components_batteries : std::map<std::string,double>
+    - components_costs_engine : std::map<std::string,double>
+    - components_costs_enactor : std::map<std::string,double>
+    - contexts : std::map<std::string,uint32_t>
+    - reliability_formula : std::string
+    - cost_formula : std::string
+    - frequency : double
+    - count_to_calc_and_reset, count_to_fetch, arrived_status : int32_t
+    --
+    + DataAccess(argc:int&, argv:char**, name:std::string)
+    + ~DataAccess()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    + receivePersistMessage(msg:archlib::Persist::ConstPtr&) : void
+    + processTargetSystemData(msg:messages::TargetSystemData::ConstPtr&) : void
+    + processQuery(req:archlib::DataAccessRequest::Request&, res:archlib::DataAccessRequest::Response&) : bool
+    - flush() : void
+    - applyTimeWindow() : void
+    - calculateComponentReliability(component:std::string) : std::string
+    - calculateComponentCost(component:std::string, req_name:std::string) : std::string
+  }
+
+  DataAccess -up-|> ROSC
+  DataAccess *-- StatusMessage
+  DataAccess *-- EnergyStatusMessage
+  DataAccess *-- EventMessage
+  DataAccess *-- UncertaintyMessage
+  DataAccess *-- AdaptationMessage
+  DataAccess ..> Formula : fetch and evaluate formulas
+}
+
+package "sa-bsn::logging_infrastructure::logger" {
+  class "Logger" as Logger {
+    - time_ref : int64_t
+    - adapt : ros::Publisher
+    - status : ros::Publisher
+    - event : ros::Publisher
+    - persist : ros::Publisher
+    --
+    + Logger(argc:int&, argv:char**, name:std::string)
+    + ~Logger()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    + receiveAdaptationCommand(msg:archlib::AdaptationCommand::ConstPtr&) : void
+    + receiveStatus(msg:archlib::Status::ConstPtr&) : void
+    + receiveEnergyStatus(msg:archlib::EnergyStatus::ConstPtr&) : void
+    + receiveEvent(msg:archlib::Event::ConstPtr&) : void
+    + receiveUncertainty(msg:archlib::Uncertainty::ConstPtr&) : void
+  }
+
+  Logger -up-|> ROSC
+}
+
+package "sa-bsn::environment::patient" {
+  class "PatientModule" as PatientModule {
+    - patientData : std::map<std::string, bsn::generator::DataGenerator>
+    - vitalSignsFrequencies : std::map<std::string,double>
+    - vitalSignsChanges : std::map<std::string,double>
+    - vitalSignsOffsets : std::map<std::string,double>
+    - frequency : double
+    - period : double
+    - nh : ros::NodeHandle
+    - service : ros::ServiceServer
+    --
+    + PatientModule(argc:int&, argv:char**, name:std::string)
+    + ~PatientModule()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    - getPatientData(req:services::PatientData::Request&, res:services::PatientData::Response&) : bool
+    - configureDataGenerator(vitalSign:std::string) : bsn::generator::DataGenerator
+  }
+
+  PatientModule -up-|> ROSC
+  PatientModule *-- DataGenerator
+  PatientModule ..> Range
+}
+
+package "sa-bsn::simulation::injector" {
+  class "Injector" as Injector {
+    - handle : ros::NodeHandle
+    - cycles : int
+    - uncertainty_pub : std::map<std::string, ros::Publisher>
+    - components : std::vector<std::string>
+    - noise_factor : std::map<std::string,double>
+    - duration : std::map<std::string,int>
+    - frequency : std::map<std::string,double>
+    - amplitude : std::map<std::string,double>
+    - begin : std::map<std::string,int>
+    - end : std::map<std::string,int>
+    - type : std::map<std::string,std::string>
+    - log_uncertainty : ros::Publisher
+    --
+    + Injector(argc:int&, argv:char**, name:std::string)
+    + ~Injector()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    - inject(component:std::string, content:std::string) : void
+    - gen_noise(component:std::string, noise:double&, duration:int&, amplitude:double&, type:std::string&) : double
+    - seconds_in_cycles(seconds:double) : int64_t
+    - cycles_in_seconds(cycles:double) : int64_t
+  }
+
+  Injector -up-|> ROSC
+}
+
+package "sa-bsn::system_manager::adaptation_engine" {
+  abstract class "Engine" as Engine {
+    - qos_attribute : std::string
+    + info_quant : double
+    + monitor_freq : double
+    + actuation_freq : double
+    + target_system_model : bsn::model::Formula
+    + strategy : std::map<std::string,double>
+    + priority : std::map<std::string,int>
+    + deactivatedComponents : std::map<std::string,int>
+    + enactor_server : ros::ServiceServer
+    --
+    + Engine(argc:int&, argv:char**, name:std::string)
+    + ~Engine()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    + receiveException(msg:archlib::Exception::ConstPtr&) : void
+    + sendAdaptationParameter(req:archlib::EngineRequest::Request&, res:archlib::EngineRequest::Response&) : bool
+    # get_prefix() : std::string
+    # initialize_priority(terms:std::vector<std::string>) : std::map<std::string,int>
+    # initialize_strategy(terms:std::vector<std::string>) : std::map<std::string,double>
+    # fetch_formula(name:std::string) : std::string
+    # setUp_formula(formula:std::string) : void
+    # calculate_qos(model:bsn::model::Formula, conf:std::map<std::string,double>) : double
+    # monitor() : void
+    # analyze() : void
+    # plan() : void
+    # execute() : void
+  }
+
+  class "ReliabilityEngine" as ReliabilityEngine {
+    - setpoint : double
+    - offset : double
+    - gain : double
+    - tolerance : double
+    - cycles : int
+    - prefix : std::string
+    - enact : ros::Publisher
+    --
+    + setUp() : void
+    + tearDown() : void
+    + get_prefix() : std::string
+    + initialize_priority(terms:std::vector<std::string>) : std::map<std::string,int>
+    + initialize_strategy(terms:std::vector<std::string>) : std::map<std::string,double>
+    + monitor() : void
+    + analyze() : void
+    + plan() : void
+    + execute() : void
+  }
+
+  class "CostEngine" as CostEngine {
+    - setpoint : double
+    - offset : double
+    - gain : double
+    - tolerance : double
+    - cycles : int
+    - prefix : std::string
+    - enact : ros::Publisher
+    - energy_status : ros::Publisher
+    --
+    + setUp() : void
+    + tearDown() : void
+    + get_prefix() : std::string
+    + initialize_priority(terms:std::vector<std::string>) : std::map<std::string,int>
+    + initialize_strategy(terms:std::vector<std::string>) : std::map<std::string,double>
+    + monitor() : void
+    + analyze() : void
+    + plan() : void
+    + execute() : void
+  }
+
+  Engine -up-|> ROSC
+  ReliabilityEngine -up-|> Engine
+  CostEngine -up-|> Engine
+  Engine ..> Formula
+}
+
+package "sa-bsn::system_manager::enactor" {
+  abstract class "Enactor" as Enactor {
+    + adapt : ros::Publisher
+    + except : ros::Publisher
+    + invocations : std::map<std::string, std::deque<int>>
+    + exception_buffer : std::map<std::string,int>
+    + freq : std::map<std::string,double>
+    + r_curr, c_curr : std::map<std::string,double>
+    + r_ref, c_ref : std::map<std::string,double>
+    + replicate_task : std::map<std::string,int>
+    + cycles : int64_t
+    + stability_margin : double
+    + adaptation_parameter : std::string
+    --
+    + Enactor(argc:int&, argv:char**, name:std::string)
+    + ~Enactor()
+    + setUp() : void
+    + tearDown() : void
+    + body() : void
+    + receiveStatus() : void
+    + receiveStrategy(msg:archlib::Strategy::ConstPtr&) : void
+    + receiveAdaptationParameter() : void
+    + receiveEvent(msg:archlib::Event::ConstPtr&) : void
+    + apply_reli_strategy(component:std::string) : void
+    + apply_cost_strategy(component:std::string) : void
+    + print() : void
+  }
+
+  class "Controller" as Controller {
+    - adaptation_parameter : std::string
+    - KP : double
+    - kp : std::map<std::string,double>
+    --
+    + Controller(argc:int&, argv:char**, name:std::string)
+    + ~Controller()
+    + setUp() : void
+    + receiveEvent(msg:archlib::Event::ConstPtr&) : void
+    + apply_reli_strategy(component:std::string) : void
+    + apply_cost_strategy(component:std::string) : void
+  }
+
+  Enactor -up-|> ROSC
+  Controller -up-|> Enactor
+}
+
+' Cross-package core associations already shown above.
+
+@enduml

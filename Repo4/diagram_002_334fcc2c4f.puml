@@ -1,0 +1,64 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+skinparam defaultTextAlignment left
+
+actor "User" as User
+
+node "Desktop Host" as Host {
+  component "Main launcher\nsrc/backend/main.py" as Main
+  component "PyWebView\n(webview)" as WebView
+}
+
+node "Backend" as Backend {
+  component "Flask server\nsrc/backend/server.py" as Flask
+  component "App init\nsrc/backend/app.py" as App
+  component "XES handler\nsrc/backend/xes_handler.py" as XES
+  component "PM4Py\n(process mining)" as PM4PY
+  component "Pandas" as Pandas
+  component "Plotly Express" as Plotly
+  component "xml.etree.ElementTree" as ET
+}
+
+node "Frontend (served as static/template)" as Frontend {
+  component "GUI index.html\n(gui/index.html)\n(vis-network, Plotly, Bootstrap, jQuery)" as GUI
+  artifact "Generated chart\n(gui/scatter3D.html)" as ScatterHTML
+}
+
+node "File System" as FS
+
+User --> WebView : starts desktop app
+Main --> WebView : create_window('SpaceMiner', server)
+WebView --> Flask : hosts Flask app\nand injects webview.token
+
+GUI --> Flask : HTTP GET/POST (AJAX)\n/init, /select/logs, /discover/*,\n/view/3Dscatter*, /show/*
+Flask ..> App : initialize()
+Flask ..> XES : csv_to_xes(), merge_xes()
+
+Flask ..> PM4PY : import logs, DFG discovery,\nperformance DFG, filtering
+Flask ..> Pandas : DataFrame ops, CSV reading
+Flask ..> ET : parse/write XES (XML)
+Flask ..> Plotly : write_html(gui/scatter3D.html)
+
+Flask --> ScatterHTML : generate Plotly chart
+ScatterHTML ..> FS
+GUI ..> ScatterHTML : embed via <object data="gui/scatter3D.html">
+
+Flask ..> WebView : windows[0].create_file_dialog()
+Flask ..> FS : read XES/CSV, write HTML
+WebView ..> FS : open file dialogs
+
+package "Utilities (offline, not used at runtime)" as Utils {
+  component "process_inprogress.py"
+  component "generator.py"
+  component "generator_tractor.py"
+  component "handle.py"
+  component "odom.py"
+  component "piton.py"
+  component "plot.py"
+  component "script.py, script copy.py"
+  component "sort.py, sort copy.py"
+}
+
+@enduml

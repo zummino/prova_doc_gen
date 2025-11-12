@@ -1,0 +1,136 @@
+@startuml 
+
+' ===========================
+' Runtime Nodes (one per executable)
+' ===========================
+node "patient (PatientModule)" as patient
+node "collector (Probe)" as collector
+node "logger (Logger)" as logger
+node "data_access (DataAccess)" as data_access
+node "injector (Injector)" as injector
+
+' Two alternative engines (both named "engine" in code; run one at a time)
+node "engine (ReliabilityEngine)" as engine_reli
+node "engine (CostEngine)" as engine_cost
+
+' Controller (enactor specialization)
+node "enactor (Controller)" as enactor
+
+node "param_adapter (ParamAdapter)" as param_adapter
+
+' Target System — Sensors and Central Hub
+node "oximeter (G3T1_1)" as oximeter
+node "ecg (G3T1_2)" as ecg
+node "thermometer (G3T1_3)" as thermometer
+node "abps (G3T1_4)" as abps
+node "apbd (G3T1_5)" as apbd
+node "glucosemeter (G3T1_6)" as glucosemeter
+node "centralhub (G4T1)" as centralhub
+
+' ===========================
+' Probe integration (collect_* -> log_*)
+' ===========================
+oximeter --> collector : topics collect_event,\ncollect_status,\ncollect_energy_status
+ecg --> collector : topics collect_event,\ncollect_status,\ncollect_energy_status
+thermometer --> collector : topics collect_event,\ncollect_status,\ncollect_energy_status
+abps --> collector : topics collect_event,\ncollect_status,\ncollect_energy_status
+apbd --> collector : topics collect_event,\ncollect_status,\ncollect_energy_status
+glucosemeter --> collector : topics collect_event,\ncollect_status,\ncollect_energy_status
+centralhub --> collector : topics collect_event,\ncollect_status,\ncollect_energy_status
+
+collector --> logger : topics log_event,\nlog_status,\nlog_energy_status
+
+' ===========================
+' Logger fan-out (persist, event, reconfigure)
+' ===========================
+logger --> data_access : topic persist
+logger --> enactor : topic event
+logger --> param_adapter : topic reconfigure
+
+' ===========================
+' Injector (uncertainty) to sensors and logging
+' ===========================
+injector --> oximeter : topic uncertainty_/oximeter
+injector --> ecg : topic uncertainty_/ecg
+injector --> thermometer : topic uncertainty_/thermometer
+injector --> abps : topic uncertainty_/abps
+injector --> apbd : topic uncertainty_/apbd
+injector --> glucosemeter : topic uncertainty_/glucosemeter
+injector --> centralhub : topic uncertainty_/centralhub
+injector --> logger : topic log_uncertainty
+
+' ===========================
+' Patient data service used by sensors
+' ===========================
+oximeter ..> patient : service getPatientData
+ecg ..> patient : service getPatientData
+thermometer ..> patient : service getPatientData
+abps ..> patient : service getPatientData
+apbd ..> patient : service getPatientData
+glucosemeter ..> patient : service getPatientData
+
+' ===========================
+' Sensor data to Central Hub
+' ===========================
+oximeter --> centralhub : topic oximeter_data
+ecg --> centralhub : topic ecg_data
+thermometer --> centralhub : topic thermometer_data
+abps --> centralhub : topic abps_data
+apbd --> centralhub : topic abpd_data
+glucosemeter --> centralhub : topic glucosemeter_data
+
+' ===========================
+' Central Hub to Knowledge Repository
+' ===========================
+centralhub --> data_access : topic TargetSystemData
+
+' ===========================
+' Effector registration + targeted reconfiguration
+' ===========================
+' All target-system components register to param_adapter via EffectorRegister
+oximeter ..> param_adapter : service EffectorRegister
+ecg ..> param_adapter : service EffectorRegister
+thermometer ..> param_adapter : service EffectorRegister
+abps ..> param_adapter : service EffectorRegister
+apbd ..> param_adapter : service EffectorRegister
+glucosemeter ..> param_adapter : service EffectorRegister
+centralhub ..> param_adapter : service EffectorRegister
+
+' Param adapter forwards to each component-specific reconfigure channel
+param_adapter --> oximeter : topic reconfigure_/oximeter
+param_adapter --> ecg : topic reconfigure_/ecg
+param_adapter --> thermometer : topic reconfigure_/thermometer
+param_adapter --> abps : topic reconfigure_/abps
+param_adapter --> apbd : topic reconfigure_/apbd
+param_adapter --> glucosemeter : topic reconfigure_/glucosemeter
+param_adapter --> centralhub : topic reconfigure_/centralhub
+
+' ===========================
+' Engine <-> Enactor
+' ===========================
+engine_reli --> enactor : topic strategy
+engine_cost --> enactor : topic strategy
+
+enactor --> logger : topic log_adapt
+
+' Engine receives exceptions from enactor
+enactor --> engine_reli : topic exception
+enactor --> engine_cost : topic exception
+
+' ===========================
+' Engines/Enactor <-> Data Access
+' ===========================
+engine_reli ..> data_access : service DataAccessRequest
+engine_cost ..> data_access : service DataAccessRequest
+enactor ..> data_access : service DataAccessRequest
+
+' Enactor requests adaptation parameter from Engine
+enactor ..> engine_reli : service EngineRequest
+enactor ..> engine_cost : service EngineRequest
+
+' ===========================
+' Cost engine also reports energy status to logger
+' ===========================
+engine_cost --> logger : topic log_energy_status
+
+@enduml

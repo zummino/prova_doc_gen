@@ -1,0 +1,146 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+package "Environment" {
+  component "PatientModule\n(node: patient)" as PatientModule
+}
+
+package "Target System" {
+  component "G3T1_1\n(oximeter)" as G3T1_1
+  component "G3T1_2\n(ecg)" as G3T1_2
+  component "G3T1_3\n(thermometer)" as G3T1_3
+  component "G3T1_4\n(abps)" as G3T1_4
+  component "G3T1_5\n(abpd)" as G3T1_5
+  component "G3T1_6\n(glucosemeter)" as G3T1_6
+  component "G4T1\n(centralhub)" as G4T1
+
+  component "ParamAdapter\n(effector)" as ParamAdapter
+  component "Probe\n(node: collector)" as Probe
+}
+
+package "Logging & Knowledge Repository" {
+  component "Logger\n(node: logger)" as Logger
+  component "DataAccess\n(node: data_access)" as DataAccess
+}
+
+package "System Manager" {
+  component "ReliabilityEngine\n(node: engine)" as RelEngine
+  component "CostEngine\n(node: engine)" as CostEngine
+  component "Enactor\n(Controller, node: enactor)" as Enactor
+}
+
+package "Simulation" {
+  component "Injector\n(node: injector)" as Injector
+  component "Analyzer.py\n(off-line)" as Analyzer
+}
+
+'==============================
+' Target system sensing data flow
+'==============================
+G3T1_1 --> G4T1 : publish messages/SensorData\n"oximeter_data"
+G3T1_2 --> G4T1 : publish messages/SensorData\n"ecg_data"
+G3T1_3 --> G4T1 : publish messages/SensorData\n"thermometer_data"
+G3T1_4 --> G4T1 : publish messages/SensorData\n"abps_data"
+G3T1_5 --> G4T1 : publish messages/SensorData\n"abpd_data"
+G3T1_6 --> G4T1 : publish messages/SensorData\n"glucosemeter_data"
+
+G4T1 --> DataAccess : publish messages/TargetSystemData\n"TargetSystemData"
+
+'==============================
+' Component lifecycle/status/energy telemetry
+'==============================
+' All Components (Sensors + CentralHub) publish collect_*; Probe republishes as log_*
+G3T1_1 --> Probe : publish archlib/Event\n\"collect_event\"\npublish archlib/Status\n\"collect_status\"\npublish archlib/EnergyStatus\n\"collect_energy_status\"
+G3T1_2 --> Probe : publish collect_event / collect_status / collect_energy_status
+G3T1_3 --> Probe : publish collect_event / collect_status / collect_energy_status
+G3T1_4 --> Probe : publish collect_event / collect_status / collect_energy_status
+G3T1_5 --> Probe : publish collect_event / collect_status / collect_energy_status
+G3T1_6 --> Probe : publish collect_event / collect_status / collect_energy_status
+G4T1   --> Probe : publish collect_event / collect_status / collect_energy_status
+
+Probe --> Logger : publish archlib/Event\n\"log_event\"\npublish archlib/Status\n\"log_status\"\npublish archlib/EnergyStatus\n\"log_energy_status\"
+
+' Logger persists and forwards:
+Logger --> DataAccess : publish archlib/Persist\n"persist"
+Logger --> Enactor : publish archlib/Event\n"event"
+' Logger also publishes "status" but Enactor does not consume it
+
+' CostEngine reports cost via logger too (global + per-component)
+CostEngine --> Logger : publish archlib/EnergyStatus\n\"log_energy_status\" (global and components)
+
+'==============================
+' Adaptation loop (Engine <-> Enactor) and DataAccess services
+'==============================
+RelEngine --> Enactor : publish archlib/Strategy\n"strategy"
+CostEngine --> Enactor : publish archlib/Strategy\n"strategy"
+
+Enactor --> RelEngine : publish archlib/Exception\n"exception"
+Enactor --> CostEngine : publish archlib/Exception\n"exception"
+
+' Engines pull formulas and data from DataAccess
+RelEngine ..> DataAccess : srv archlib/DataAccessRequest\n(fetch formulas,\nreliability/events)
+CostEngine ..> DataAccess : srv archlib/DataAccessRequest\n(fetch formulas,\ncost/events)
+
+' Enactor pulls current metrics from DataAccess
+Enactor ..> DataAccess : srv archlib/DataAccessRequest\n(all:reliability | all:cost)
+
+' Enactor discovers adaptation parameter from Engine
+Enactor ..> RelEngine : srv archlib/EngineRequest\n(get adaptation_parameter)
+Enactor ..> CostEngine : srv archlib/EngineRequest\n(get adaptation_parameter)
+
+'==============================
+' Adaptation enactment path: Enactor -> Logger -> ParamAdapter -> Components
+'==============================
+Enactor --> Logger : publish archlib/AdaptationCommand\n"log_adapt"
+Logger --> ParamAdapter : publish archlib/AdaptationCommand\n"reconfigure"
+
+' ParamAdapter routes to specific component topics after registration
+ParamAdapter --> G3T1_1 : publish archlib/AdaptationCommand\n"reconfigure_/oximeter"
+ParamAdapter --> G3T1_2 : publish archlib/AdaptationCommand\n"reconfigure_/ecg"
+ParamAdapter --> G3T1_3 : publish archlib/AdaptationCommand\n"reconfigure_/thermometer"
+ParamAdapter --> G3T1_4 : publish archlib/AdaptationCommand\n"reconfigure_/abps"
+ParamAdapter --> G3T1_5 : publish archlib/AdaptationCommand\n"reconfigure_/apbd"
+ParamAdapter --> G3T1_6 : publish archlib/AdaptationCommand\n"reconfigure_/glucosemeter"
+ParamAdapter --> G4T1   : publish archlib/AdaptationCommand\n"reconfigure_/centralhub"
+
+' Components register/unregister with ParamAdapter
+G3T1_1 ..> ParamAdapter : srv archlib/EffectorRegister\n(connect/disconnect)
+G3T1_2 ..> ParamAdapter : srv archlib/EffectorRegister
+G3T1_3 ..> ParamAdapter : srv archlib/EffectorRegister
+G3T1_4 ..> ParamAdapter : srv archlib/EffectorRegister
+G3T1_5 ..> ParamAdapter : srv archlib/EffectorRegister
+G3T1_6 ..> ParamAdapter : srv archlib/EffectorRegister
+G4T1   ..> ParamAdapter : srv archlib/EffectorRegister
+
+'==============================
+' Patient data provisioning to sensors
+'==============================
+G3T1_1 ..> PatientModule : srv services/PatientData\n("getPatientData")
+G3T1_2 ..> PatientModule : srv services/PatientData
+G3T1_3 ..> PatientModule : srv services/PatientData
+G3T1_4 ..> PatientModule : srv services/PatientData
+G3T1_5 ..> PatientModule : srv services/PatientData
+G3T1_6 ..> PatientModule : srv services/PatientData
+
+'==============================
+' Uncertainty injection (simulation)
+'==============================
+Injector --> Logger : publish archlib/Uncertainty\n"log_uncertainty"
+Injector --> G3T1_1 : publish archlib/Uncertainty\n"uncertainty_/oximeter"
+Injector --> G3T1_2 : publish archlib/Uncertainty\n"uncertainty_/ecg"
+Injector --> G3T1_3 : publish archlib/Uncertainty\n"uncertainty_/thermometer"
+Injector --> G3T1_4 : publish archlib/Uncertainty\n"uncertainty_/abps"
+Injector --> G3T1_5 : publish archlib/Uncertainty\n"uncertainty_/apbd"
+Injector --> G3T1_6 : publish archlib/Uncertainty\n"uncertainty_/glucosemeter"
+
+'==============================
+' Offline analysis of persisted logs
+'==============================
+DataAccess --> Analyzer : write logs to files\n(event_*.log, status_*.log,\nenergystatus_*.log, uncertainty_*.log,\nadaptation_*.log)\nAnalyzer.py reads files offline
+
+@enduml
+
+@enduml

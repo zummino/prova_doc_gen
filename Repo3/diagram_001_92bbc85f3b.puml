@@ -1,0 +1,78 @@
+@startuml
+
+' External actors (all are concrete ROS nodes in the codebase)
+actor "patient\n(node: patient)" as Patient
+actor "injector\n(node: injector)" as Injector
+actor "param_adapter\n(node: param_adapter)" as ParamAdapter
+actor "collector\n(node: collector)" as Collector
+actor "data_access\n(node: data_access)" as DataAccess
+
+' System boundary
+rectangle "Target System\n(Sensors + CentralHub)" as TargetSystem {
+  usecase "(Request vital sign\nsamples via service\ngetPatientData)" as UC_RequestData
+  usecase "(Collect, filter, and\ntransfer sensor data\n<type>_data)" as UC_SensorPipeline
+  usecase "(Publish lifecycle and\nresource telemetry:\ncollect_event,\ncollect_status,\ncollect_energy_status)" as UC_Telemetry
+  usecase "(Receive and apply\nreconfiguration\nreconfigure_<component>)" as UC_Reconfigure
+  usecase "(Receive uncertainty\ninjections\nuncertainty_/<component>)" as UC_Uncertainty
+  usecase "(Fuse risks and publish\npatient status\nTargetSystemData)" as UC_FuseAndPublish
+}
+
+' Associations strictly based on code-level interactions
+' PatientModule <-> Sensors (service: getPatientData)
+Patient --> UC_RequestData : provides\nservices::PatientData
+UC_RequestData --> UC_SensorPipeline : used by
+
+' Injector -> Sensors (topic: uncertainty_/...)
+Injector --> UC_Uncertainty : publishes\narchlib::Uncertainty
+
+' ParamAdapter -> Components (topic: reconfigure_<component>)
+ParamAdapter --> UC_Reconfigure : publishes\narchlib::AdaptationCommand
+
+' Probe (collector) <- Target System telemetry (topics: collect_*)
+Collector --> UC_Telemetry : subscribes to\narchlib::{Event,Status,EnergyStatus}
+
+' CentralHub -> DataAccess (topic: TargetSystemData)
+DataAccess --> UC_FuseAndPublish : subscribes to\nmessages::TargetSystemData
+
+' Internal flow (from sensors to hub) is implied by topics:
+'   - <sensor>_data -> CentralHub (messages::SensorData)
+' and therefore not modeled as external actor links here.
+
+note right of UC_RequestData
+  service: "getPatientData"
+  package: environment/patient
+  messages: services::PatientData
+end note
+
+note right of UC_SensorPipeline
+  topics: "<type>_data"
+  message: messages::SensorData
+  battery updates embedded in SensorData.batt
+end note
+
+note bottom of UC_Telemetry
+  topics: "collect_event", "collect_status", "collect_energy_status"
+  messages: archlib::Event, archlib::Status, archlib::EnergyStatus
+  Probe forwards to Logger via "log_*"
+end note
+
+note right of UC_Reconfigure
+  topics: "reconfigure_<component>"
+  message: archlib::AdaptationCommand
+  parameters: "freq=...", "replicate_collect=..."
+end note
+
+note left of UC_Uncertainty
+  topics: "uncertainty_/<component>"
+  message: archlib::Uncertainty
+  parameter: "noise_factor=..."
+end note
+
+note bottom of UC_FuseAndPublish
+  topic: "TargetSystemData"
+  message: messages::TargetSystemData
+  producer: G4T1 (CentralHub)
+  consumer: DataAccess
+end note
+
+@enduml
