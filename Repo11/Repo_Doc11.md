@@ -1010,7 +1010,7 @@ package "Old-Launcher (legacy)" as OldLauncher {
       +to_json(): dict
     }
 
-    class ToolConfigOld as ToolConfigLegacy {
+    class ToolConfigOld{
       +name: str
       +description: str
       +inputs: [ToolInput]
@@ -1052,7 +1052,7 @@ package "Old-Launcher (legacy)" as OldLauncher {
       {static} +check_for_tool_help(): bool
       {static} +fetch_launcher_params()
       {static} +fetch_launcher_params_from_json(json: dict)
-      -- internal validation --
+      .. internal validation ..
       {static} -_check_tool_validity(tool: str): bool
       {static} -_check_entry_validity(tool: str, entry: str): bool
       {static} -_check_inputs_validity(tool: str, entry: str, inputs: [str]): bool
@@ -1060,7 +1060,7 @@ package "Old-Launcher (legacy)" as OldLauncher {
       {static} -_interactive()
     }
 
-    class LauncherOld as LauncherLegacy {
+    class LauncherOld{
       -tool: str
       -entrypoint: str
       -inputs: [str]
