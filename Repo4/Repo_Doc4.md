@@ -672,6 +672,17 @@ Figure 5.1 — SpaceMiner Codebase Class Diagram
 
 skinparam classAttributeIconSize 0
 
+' --- External libraries as classes (to avoid stereotypes on links) ---
+class Flask <<external>>
+class webview <<external>>
+class pm4py <<external>>
+class "plotly.express" as PlotlyExpress <<external>>
+class pandas <<external>>
+class "xml.etree.ElementTree" as XET <<external>>
+class random <<external>>
+class datetime <<external>>
+class json <<external>>
+
 package "gui" {
   class IndexHTML <<JavaScript>> {
     +doAjax(url, method, responseHandler, data)
@@ -881,26 +892,29 @@ package "src/utilities" {
 main ..> server : imports Flask app "server"
 server ..> app : calls initialize()
 server ..> xes_handler : uses csv_to_xes(), merge_xes()
-server ..> "Flask" : framework usage <<external>>
-server ..> "webview" : token, dialogs <<external>>
-server ..> "pm4py" : mining/log APIs <<external>>
-server ..> "plotly.express" : 3D scatter <<external>>
-server ..> "pandas" : DataFrame handling <<external>>
-server ..> "xml.etree.ElementTree" : XES parse <<external>>
+server ..> Flask : framework usage
+server ..> webview : token, dialogs
+server ..> pm4py : mining/log APIs
+server ..> PlotlyExpress : 3D scatter
+server ..> pandas : DataFrame handling
+server ..> XET : XES parse
 
 IndexHTML ..> server : HTTP endpoints (see note)
 
-process_inprogress ..> "pandas" <<external>>
-process_inprogress ..> "xml.etree.ElementTree" <<external>>
-process_inprogress ..> "pm4py" <<external>>
+process_inprogress ..> pandas
+process_inprogress ..> XET
+process_inprogress ..> pm4py
 
-generator ..> "random" <<external>>
-generator ..> "datetime" <<external>>
-generator_tractor ..> "json" <<external>>
+generator ..> random
+generator ..> datetime
+generator_tractor ..> json
 
-xes_handler ..> "pandas" <<external>>
-xes_handler ..> "pm4py" <<external>>
-xes_handler ..> "xml.etree.ElementTree" <<external>>
+xes_handler ..> pandas
+xes_handler ..> pm4py
+xes_handler ..> XET
+
+@enduml
+
 
 @enduml
 ```
