@@ -283,7 +283,6 @@ Figure 3.1 — Component Diagram (file: fig-3-1-component-diagram.puml)
 
 ```plantuml
 @startuml
-
 skinparam componentStyle rectangle
 skinparam shadowing false
 skinparam defaultFontName Monospace
@@ -293,7 +292,8 @@ package "Common" {
 }
 
 package "as_protocol" {
-  component "AuthServer\n(gk_phemap_as)" as AS {
+  component "AuthServer\n(gk_phemap_as)" as AS
+  note right of AS
     --
     API
     --
@@ -305,19 +305,22 @@ package "as_protocol" {
     - gk_as_remove_cb(...)
     - gk_as_is_still_pending(...)
     - as_get_next_link(...)
-  }
-  component "AS Platform Services\n(as_common.h)" as ASPLAT <<external>> {
+  end note
+
+  component "AS Platform Services\n(as_common.h)" as ASPLAT <<external>>
+  note right of ASPLAT
     + as_start_timer()
     + as_is_timer_expired()
     + as_reset_timer()
     + as_rng_init()
     + as_rng_gen()
     + as_read_from_dev(...)
-  }
+  end note
 }
 
 package "dev_protocol" {
-  component "Device\n(gk_phemap_dev)" as DEV {
+  component "Device\n(gk_phemap_dev)" as DEV
+  note right of DEV
     --
     API
     --
@@ -328,19 +331,22 @@ package "dev_protocol" {
     - gk_dev_update_pk_cb(...)
     - gk_dev_sup_inst(...)
     - dev_get_next_puf_resp_*()
-  }
-  component "Device Platform Services\n(dev_common.h)" as DEVPLAT <<external>> {
+  end note
+
+  component "Device Platform Services\n(dev_common.h)" as DEVPLAT <<external>>
+  note right of DEVPLAT
     + dev_start_timer(...)
     + dev_is_timer_expired(...)
     + dev_reset_timer(...)
     + dev_rng_init()
     + dev_rng_gen()
     + read_data_from_as(...)
-  }
+  end note
 }
 
 package "lv_protocol" {
-  component "Local Verifier\n(dgk_lv)" as LV {
+  component "Local Verifier\n(dgk_lv)" as LV
+  note right of LV
     --
     API
     --
@@ -351,25 +357,27 @@ package "lv_protocol" {
     - lv_forge_new_inter(...)
     - IsAS/IsDevice/IsLV(...)
     - lv_reset_timer()
-  }
-  component "LV Timer Abstraction" as LVT <<external>> {
+  end note
+
+  component "LV Timer Abstraction" as LVT <<external>>
+  note right of LVT
     + lv_start_timer_ms(...)
     + lv_reset_timer()
-  }
+  end note
 }
 
 ' Common types and macros
-PHEMAP -[down]-> AS
-PHEMAP -[down]-> DEV
-PHEMAP -[down]-> LV
+PHEMAP --> AS
+PHEMAP --> DEV
+PHEMAP --> LV
 
 ' Platform bindings
-AS ..> ASPLAT : calls
+AS  ..> ASPLAT : calls
 DEV ..> DEVPLAT : calls
 LV  ..> LVT    : calls
 
 ' LV composes AS and Device roles (per code: lv_as_role, lv_dev_role)
-LV ..> AS : embeds AuthServer (lv_as_role)
+LV ..> AS  : embeds AuthServer (lv_as_role)
 LV ..> DEV : embeds Device (lv_dev_role)
 
 ' Protocol message interactions (type-level)

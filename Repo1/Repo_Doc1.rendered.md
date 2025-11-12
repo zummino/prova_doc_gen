@@ -218,133 +218,7 @@ This section presents a technology-agnostic component view of the PHEMAP protoco
 
 Figure 3.1 — Component Diagram (file: fig-3-1-component-diagram.puml)
 
-```plantuml
-@startuml
-
-skinparam componentStyle rectangle
-skinparam shadowing false
-skinparam defaultFontName Monospace
-
-package "Common" {
-  component "phemap_common.h" as PHEMAP <<library>>
-}
-
-package "as_protocol" {
-  component "AuthServer\n(gk_phemap_as)" as AS {
-    --
-    API
-    --
-    - gk_as_automa(...)
-    - gk_as_start_session_cb(...)
-    - gk_as_start_session(...)
-    - gk_as_conf_cb(...)
-    - gk_as_add_cb(...)
-    - gk_as_remove_cb(...)
-    - gk_as_is_still_pending(...)
-    - as_get_next_link(...)
-  }
-  component "AS Platform Services\n(as_common.h)" as ASPLAT <<external>> {
-    + as_start_timer()
-    + as_is_timer_expired()
-    + as_reset_timer()
-    + as_rng_init()
-    + as_rng_gen()
-    + as_read_from_dev(...)
-  }
-}
-
-package "dev_protocol" {
-  component "Device\n(gk_phemap_dev)" as DEV {
-    --
-    API
-    --
-    - gk_dev_automa(...)
-    - gk_dev_start_session(...)
-    - gk_dev_end_session(...)
-    - gk_dev_startPK_cb(...)
-    - gk_dev_update_pk_cb(...)
-    - gk_dev_sup_inst(...)
-    - dev_get_next_puf_resp_*()
-  }
-  component "Device Platform Services\n(dev_common.h)" as DEVPLAT <<external>> {
-    + dev_start_timer(...)
-    + dev_is_timer_expired(...)
-    + dev_reset_timer(...)
-    + dev_rng_init()
-    + dev_rng_gen()
-    + read_data_from_as(...)
-  }
-}
-
-package "lv_protocol" {
-  component "Local Verifier\n(dgk_lv)" as LV {
-    --
-    API
-    --
-    - lv_automa(...)
-    - lv_as_sender_automa(...)
-    - lv_device_sender_automa(...)
-    - lv_otherLv_sender_automa(...)
-    - lv_forge_new_inter(...)
-    - IsAS/IsDevice/IsLV(...)
-    - lv_reset_timer()
-  }
-  component "LV Timer Abstraction" as LVT <<external>> {
-    + lv_start_timer_ms(...)
-    + lv_reset_timer()
-  }
-}
-
-' Common types and macros
-PHEMAP -[down]-> AS
-PHEMAP -[down]-> DEV
-PHEMAP -[down]-> LV
-
-' Platform bindings
-AS ..> ASPLAT : calls
-DEV ..> DEVPLAT : calls
-LV  ..> LVT    : calls
-
-' LV composes AS and Device roles (per code: lv_as_role, lv_dev_role)
-LV ..> AS : embeds AuthServer (lv_as_role)
-LV ..> DEV : embeds Device (lv_dev_role)
-
-' Protocol message interactions (type-level)
-DEV -down-> AS : START_SESS\nPK_CONF\nEND_SESS
-AS  -up->   DEV: START_PK\nUPDATE_KEY
-LV  -left-> DEV: LV_SUP_KEY_INSTALL
-LV  -right-> LV : INTER_KEY_INSTALL
-
-' State and buffers (for validation)
-note bottom of AS
-AuthServer state:
-- GK_AS_WAIT_FOR_START_REQ
-- GK_AS_WAIT_FOR_START_CONF
-- GK_AS_WAIT_FOR_UPDATES
-Buffers/queues:
-- unicast_tsmt_buff[MAX_NUM_AUTH][15]
-- unicast_tsmt_queue[MAX_NUM_AUTH]
-- broadcast_tsmt_buff[MAX_NUM_AUTH]
-end note
-
-note bottom of DEV
-Device state:
-- GK_DEV_WAIT_START_PK
-- GK_DEV_WAIT_FOR_UPDATE
-Buffers:
-- unicast_tsmt_buff[7]
-end note
-
-note right of LV
-LV maintains:
-- devices_broad_buffer[15]
-- lvs_broad_buffer[15]
-- inter_group_key / group_secret_token
-- num_install_pending / is_inter_installed
-end note
-
-@enduml
-```
+![diagram_002_68e710b92e](diagram_002_68e710b92e.png)
 
 ## Component-to-Source Mapping
 
@@ -828,7 +702,7 @@ This section presents a complete and implementation-faithful class diagram for t
 
 Figure 5.1 — Static class structure and interfaces derived from the codebase
 
-![diagram_002_77ba437560](diagram_002_77ba437560.png)
+![diagram_003_77ba437560](diagram_003_77ba437560.png)
 
 The diagram reflects the complete set of structures, enumerations, typedefs, and functions present in the codebase. All function signatures, visibility, and weak or file-static status are mapped explicitly. Notes highlight declared-but-missing definitions and weak defaults to support validation by the development team.
 
@@ -994,7 +868,7 @@ Figure 8.1 depicts the logical deployment topology: a Local Verifier node runs b
 
 Figure 8.1 — PHEMAP deployment topology and role placement
 
-![diagram_003_72bf357adf](diagram_003_72bf357adf.png)
+![diagram_004_72bf357adf](diagram_004_72bf357adf.png)
 
 The Auth Server node encapsulates the group-key management logic for devices, including session start, confirmation, add/remove, updates, and a finite-state automaton entrypoint (gk_as_automa). The Device node encapsulates the device-side finite-state automaton, installation, updates, and handling of supplemental keys from its Local Verifier. The Local Verifier node is a composition that runs both an Auth Server role for its devices and a Device role towards a higher-layer Auth Server, and it orchestrates inter-verifier group key propagation. The Platform HAL denotes the weakly linked timer and RNG hooks used by all roles; these can be overridden by the integrator.
 

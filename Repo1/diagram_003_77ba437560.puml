@@ -1,0 +1,212 @@
+@startuml
+set separator none
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rect
+
+package "phemap_common" {
+  enum phemap_mex_t {
+    START_SESS
+    START_PK
+    PK_CONF
+    END_SESS
+    UPDATE_KEY
+    UPDATE_CONF
+    INSTALL_SEC
+    SEC_CONF
+    INTER_KEY_INSTALL
+    LV_SUP_KEY_INSTALL
+  }
+
+  enum phemap_ret_t {
+    OK
+    REINIT
+    CHAIN_EXHAUSTED
+    SYNC_AUTH_FAILED
+    TIMEOUT_SYNCB
+    TIMEOUT_SYNC_C
+    AUTH_FAILED
+    TIMEOUT_AUTH_B
+    CONN_WAIT
+    ENROLL_FAILED
+    UPDATE_OK
+    INSTALL_OK
+  }
+
+  class puf_resp_t <<typedef>> {
+    uint32_t
+  }
+  class private_key_t <<typedef>> {
+    uint32_t
+  }
+  class phemap_id_t <<typedef>> {
+    uint16_t
+  }
+}
+
+package "as_protocol" {
+  enum Gk_AS_State {
+    GK_AS_WAIT_FOR_START_REQ
+    GK_AS_WAIT_FOR_START_CONF
+    GK_AS_WAIT_FOR_UPDATES
+  }
+
+  class AuthServer {
+    +phemap_id_t as_id
+    +phemap_id_t auth_devs[MAX_NUM_AUTH]
+    +uint16_t num_auth_devs
+    +uint16_t num_part
+    +uint8_t pending_conf[MAX_NUM_AUTH]
+    +uint16_t pending_count
+    +private_key_t sr_key[MAX_NUM_AUTH]
+    +Gk_AS_State as_state
+    +private_key_t session_nonce
+    +uint8_t pk_installed
+    +private_key_t private_key
+    +puf_resp_t secret_token
+    +phemap_id_t group_members[MAX_NUM_AUTH]
+    +uint8_t unicast_tsmt_buff[MAX_NUM_AUTH][15]
+    +phemap_id_t unicast_tsmt_queue[MAX_NUM_AUTH]
+    +uint32_t unicast_tsmt_count
+    +uint8_t broadcast_tsmt_buff[MAX_NUM_AUTH]
+    +uint8_t broadcast_is_present
+
+    +gk_as_start_session_cb(as: AuthServer*, rcvd_start: uint8_t*, pkt_len: uint8_t): phemap_ret_t
+    +gk_as_start_session(as: AuthServer*): phemap_ret_t
+    +gk_as_conf_cb(as: AuthServer*, rcvd_conf: uint8_t*, pkt_len: uint8_t): phemap_ret_t
+    +gk_as_add_cb(as: AuthServer*, rcvd_pkt: const uint8_t* const, pkt_len: uint8_t): phemap_ret_t
+    +gk_as_remove_cb(as: AuthServer*, rcvd_pkt: uint8_t*, pkt_len: uint8_t): phemap_ret_t
+    +gk_as_is_still_pending(as: const AuthServer*): uint8_t
+    +gk_as_automa(pAS: AuthServer*, pPkt: uint8_t*, pktLen: uint8_t): phemap_ret_t
+
+    -keyed_sign(buff: const uint8_t* const, buff_size: uint32_t, sign_key: private_key_t): private_key_t
+    -as_check_requestor(req_id: phemap_id_t, as: AuthServer*): uint8_t
+  }
+
+  class AsCommon <<utility>> {
+    +as_start_timer(): void <<weak>>
+    +as_is_timer_expired(): uint8_t <<weak>>
+    +as_reset_timer(): void <<weak>>
+    +as_read_from_dev(id: phemap_id_t, buff: uint8_t* const, nBytes: uint32_t* const): void
+    +as_rng_init(): void <<weak>>
+    +as_rng_gen(): uint32_t <<weak>>
+  }
+
+  class AsFreeFns <<utility>> {
+    +as_get_next_link(id: phemap_id_t): puf_resp_t
+  }
+
+  note right of AsCommon
+    Functions declared in as_common.h.
+    as_read_from_dev is declared but has no definition in the provided code.
+    Timer and RNG functions have weak default definitions in gk_phemap_as.cc.
+  end note
+}
+
+package "dev_protocol" {
+  enum GK_Dev_State {
+    GK_DEV_WAIT_START_PK
+    GK_DEV_WAIT_FOR_UPDATE
+  }
+
+  class Device {
+    +phemap_id_t id
+    +phemap_id_t as_id
+    +private_key_t pk
+    +GK_Dev_State dev_state
+    +private_key_t secret_token
+    +uint8_t is_pk_installed
+    +puf_resp_t inter_group_key
+    +puf_resp_t inter_group_tok
+    +uint8_t unicast_tsmt_buff[7]
+    +uint8_t unicast_is_present
+
+    +gk_dev_start_session(dev: Device*): void
+    +gk_dev_startPK_cb(dev: Device*, resp_mex: const uint8_t* const, resp_len: uint32_t): phemap_ret_t
+    +gk_dev_end_session(dev: Device*): void
+    +gk_dev_update_pk_cb(dev: Device*, update_mex: const uint8_t* const, update_len: uint32_t): phemap_ret_t
+    +gk_dev_automa(dev: Device*, pPkt: uint8_t* const, pktLen: uint32_t): phemap_ret_t
+    +gk_dev_sup_inst(dev: Device*, rcvd_pkt: const uint8_t* const, pkt_len: uint8_t): phemap_ret_t
+
+    +dev_get_next_puf_resp_u8(puf: uint8_t* const): void
+    +dev_get_next_puf_resp(): puf_resp_t
+
+    -dev_keyed_sign(buff: const uint8_t* const, buff_size: uint32_t, sign_key: private_key_t): private_key_t
+    -forge_simple_mex(mtype: phemap_mex_t, id: phemap_id_t, mex: uint8_t* const): void
+  }
+
+  class DevCommon <<utility>> {
+    +dev_start_timer(id: phemap_id_t): void <<weak>>
+    +dev_is_timer_expired(id: phemap_id_t): uint8_t <<weak>>
+    +dev_reset_timer(id: phemap_id_t): void
+    +read_data_from_as(id: phemap_id_t, buff: uint8_t* const, size: uint32_t* const): void
+    +dev_rng_init(): void
+    +dev_rng_gen(): uint32_t
+  }
+
+  note right of DevCommon
+    Functions declared in dev_common.h.
+    dev_start_timer and dev_is_timer_expired have weak defaults in gk_phemap_dev.cc.
+    dev_reset_timer, read_data_from_as, dev_rng_init, dev_rng_gen are declared but not defined in the provided code.
+  end note
+}
+
+package "lv_protocol" {
+  class local_verifier_t {
+    +Device lv_dev_role
+    +AuthServer lv_as_role
+    +phemap_id_t list_of_lv[MAX_NUM_AUTH]
+    +uint16_t num_lv
+    +private_key_t inter_group_key
+    +private_key_t inter_sess_nonce
+    +private_key_t group_secret_token
+    +uint16_t num_install_pending
+    +private_key_t key_part
+    +uint16_t is_inter_installed
+    +uint8_t devices_broad_buffer[15]
+    +uint8_t device_buff_occupied
+    +uint8_t lvs_broad_buffer[15]
+    +uint8_t lvs_buff_occupied
+
+    +lv_as_sender_automa(lv: local_verifier_t*, rcvd_buff: uint8_t* const, rcvd_size: uint32_t): phemap_ret_t
+    +lv_otherLv_sender_automa(lv: local_verifier_t*, rcvd_buff: uint8_t* const, rcvd_size: uint32_t): phemap_ret_t
+    +lv_device_sender_automa(lv: local_verifier_t*, rcvd_buff: uint8_t* const, rcvd_size: uint32_t): phemap_ret_t
+    +lv_forge_new_inter(lv: local_verifier_t* const, old_Kl: private_key_t): void
+    +lv_automa(lv: local_verifier_t* const, rcvd_buff: uint8_t* const, rcvd_size: uint32_t): phemap_ret_t
+    +IsAS(lv: const local_verifier_t* const, rcvdId: phemap_id_t): uint8_t
+    +IsDevice(lv: const local_verifier_t* const, rcvdId: phemap_id_t): uint8_t
+    +IsLV(lv: const local_verifier_t* const, rcvdId: phemap_id_t): uint8_t
+
+    +lv_start_timer_ms(ms_time: uint32_t): void <<weak>>
+    +lv_reset_timer(): void <<weak>>
+
+    -LvInstallInterGK(lv: local_verifier_t* const): void
+    -LvGKPartCB(lv: local_verifier_t* const, RcvdBuff: uint8_t* const, size: uint32_t): phemap_ret_t
+    -LvSendGroupToDevs(lv: local_verifier_t* const): void
+    -LvKeyedSign(buff: const uint8_t* const, buffSize: uint32_t, signKey: private_key_t): private_key_t
+    -LvGetNextCarnetLink(reqId: phemap_id_t): puf_resp_t
+    -LvConfInterGKCB(lv: local_verifier_t* const, RcvdBuff: uint8_t* const): phemap_ret_t <<declared-only>>
+  }
+
+  note right of local_verifier_t
+    LvConfInterGKCB is declared static in dgk_lv.cc
+    but no definition is present in the provided code.
+    lv_reset_timer is defined (empty). lv_start_timer_ms is only declared (weak).
+  end note
+}
+
+' Composition within local_verifier_t
+local_verifier_t *-- Device : lv_dev_role
+local_verifier_t *-- AuthServer : lv_as_role
+
+' Protocol-level coupling
+AuthServer .. Device : PHEMAP msgs
+Device .. AuthServer : PHEMAP msgs
+
+' Module dependencies
+AuthServer ..> AsCommon
+Device ..> DevCommon
+local_verifier_t ..> AsCommon
+local_verifier_t ..> DevCommon
+
+@enduml
