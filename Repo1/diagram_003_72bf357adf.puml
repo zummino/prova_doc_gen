@@ -1,0 +1,52 @@
+@startuml
+skinparam shadowing false
+skinparam defaultTextAlignment left
+skinparam linetype ortho
+
+node "Auth Server node (as_protocol)" as AS_NODE {
+  artifact "as_protocol/gk_phemap_as.cc"
+  artifact "as_protocol/gk_phemap_as.h"
+  component "AuthServer\n- gk_as_automa()\n- gk_as_start_session_cb()\n- gk_as_start_session()\n- gk_as_conf_cb()\n- gk_as_add_cb()\n- gk_as_remove_cb()\n- as_get_next_link()\n- keyed_sign()" as AS_COMP
+}
+
+node "Local Verifier node (lv_protocol)" as LV_NODE {
+  artifact "lv_protocol/dgk_lv.cc"
+  artifact "lv_protocol/dgk_lv.h"
+
+  component "LV as AuthServer role\n- gk_as_automa()\n- devices_broad_buffer[15]\n- device_buff_occupied" as LV_AS_ROLE
+  component "LV as Device role\n- gk_dev_automa()\n- lvs_broad_buffer[15]\n- lvs_buff_occupied" as LV_DEV_ROLE
+  component "LV orchestration\n- lv_automa()\n- lv_as_sender_automa()\n- lv_device_sender_automa()\n- lv_otherLv_sender_automa()\n- LvInstallInterGK()\n- LvSendGroupToDevs()\n- LvGKPartCB()\n- lv_forge_new_inter()\n- LvKeyedSign()\n- lv_reset_timer()" as LV_CORE
+}
+
+node "Device node (dev_protocol)" as DEV_NODE {
+  artifact "dev_protocol/gk_phemap_dev.cc"
+  artifact "dev_protocol/gk_phemap_dev.h"
+  component "Device\n- gk_dev_automa()\n- gk_dev_start_session()\n- gk_dev_end_session()\n- gk_dev_startPK_cb()\n- gk_dev_update_pk_cb()\n- gk_dev_sup_inst()\n- dev_get_next_puf_resp[_u8]()\n- dev_keyed_sign()" as DEV_COMP
+}
+
+node "Platform HAL (weak overrides)" as HAL_NODE <<embedded>> {
+  artifact "as_protocol/as_common.h"
+  artifact "dev_protocol/dev_common.h"
+  component "Timers & RNG hooks\n- as_start_timer()/as_is_timer_expired()/as_reset_timer()\n- as_rng_init()/as_rng_gen()\n- dev_start_timer()/dev_is_timer_expired()/dev_reset_timer()\n- dev_rng_init()/dev_rng_gen()\n- lv_start_timer_ms()/lv_reset_timer()" as HAL_COMP
+}
+
+' Weak-linkage HAL dependencies
+HAL_COMP ..> AS_COMP : weak timer/RNG\n(as_*) overrides
+HAL_COMP ..> DEV_COMP : weak timer/RNG\n(dev_*) overrides
+HAL_COMP ..> LV_CORE : timer hooks\n(lv_*)
+
+' LV composition
+LV_CORE -- LV_AS_ROLE
+LV_CORE -- LV_DEV_ROLE
+
+' Interactions (message exchanges)
+AS_NODE <--> LV_NODE : as<->dev protocol\n(START_SESS, START_PK, PK_CONF,\nUPDATE_KEY, END_SESS)
+LV_NODE <--> DEV_NODE : as<->dev protocol + LV broadcast\n(START_SESS, START_PK, PK_CONF,\nUPDATE_KEY, END_SESS, LV_SUP_KEY_INSTALL)
+
+' LV-to-LV peer exchange
+node "Local Verifier node (peer)" as LV_PEER {
+  component "Peer LV" as LV_PEER_CORE
+}
+LV_NODE <--> LV_PEER : inter-LV exchange\n(INTER_KEY_INSTALL)
+
+@enduml

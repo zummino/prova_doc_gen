@@ -1,0 +1,62 @@
+@startuml 
+left to right direction
+skinparam usecase {
+  BackgroundColor White
+  BorderColor Black
+}
+
+' Actors (peer roles)
+actor Device as ACT_Device
+actor AuthServer as ACT_AS
+actor "Local Verifier" as ACT_LV
+actor "Peer Local Verifier" as ACT_PeerLV
+
+' System rectangles reflect role implementations in code
+rectangle "AuthServer (as_protocol/gk_phemap_as)" as SYS_AS {
+  usecase "Validate START_SESS\n(gk_as_start_session_cb)" as UC_AS_StartCb
+  usecase "Start session & unicast START_PK\n(gk_as_start_session)" as UC_AS_Start
+  usecase "Process PK_CONF or UPDATE_CONF\n(gk_as_conf_cb)" as UC_AS_Conf
+  usecase "Add device on START_SESS\n(gk_as_add_cb)" as UC_AS_Add
+  usecase "Remove device on END_SESS\n(gk_as_remove_cb)" as UC_AS_Rem
+  usecase "Run AS automaton\n(gk_as_automa)" as UC_AS_Auto
+}
+
+rectangle "Device (dev_protocol/gk_phemap_dev)" as SYS_DEV {
+  usecase "Initiate START_SESS\n(gk_dev_start_session)" as UC_DEV_Start
+  usecase "Process START_PK & send PK_CONF\n(gk_dev_startPK_cb)" as UC_DEV_StartPK
+  usecase "Process UPDATE_KEY\n(gk_dev_update_pk_cb)" as UC_DEV_Update
+  usecase "Process LV_SUP_KEY_INSTALL\n(gk_dev_sup_inst)" as UC_DEV_Sup
+  usecase "End session with END_SESS\n(gk_dev_end_session)" as UC_DEV_End
+  usecase "Run Device automaton\n(gk_dev_automa)" as UC_DEV_Auto
+}
+
+rectangle "Local Verifier (lv_protocol/dgk_lv)" as SYS_LV {
+  usecase "Dispatch incoming to roles\n(lv_automa)" as UC_LV_Auto
+  usecase "Device-side automaton toward AS\n(lv_as_sender_automa)" as UC_LV_AsSender
+  usecase "AS-side automaton toward devices\n(lv_device_sender_automa)" as UC_LV_DevSender
+  usecase "Receive INTER_KEY_INSTALL from peer\n(LvGKPartCB)" as UC_LV_RecvInter
+  usecase "Install and broadcast inter-group key\n(LvInstallInterGK, LvSendGroupToDevs)" as UC_LV_InstallInter
+  usecase "Forge new inter-group material\n(lv_forge_new_inter)" as UC_LV_Forge
+}
+
+' Associations between actors and use cases (concrete message flows)
+' Device <-> AuthServer
+ACT_Device -- UC_AS_StartCb
+ACT_Device -- UC_AS_Add
+ACT_Device -- UC_AS_Rem
+ACT_AS -- UC_DEV_StartPK
+ACT_AS -- UC_DEV_Update
+
+' Local Verifier interactions
+ACT_PeerLV -- UC_LV_RecvInter
+ACT_LV -- UC_DEV_Sup
+ACT_LV -- UC_LV_InstallInter
+ACT_LV -- UC_LV_Forge
+ACT_LV -- UC_LV_AsSender
+ACT_LV -- UC_LV_DevSender
+ACT_LV -- UC_LV_Auto
+
+' Internal automata as contextual behavior
+ACT_Device -- UC_DEV_Auto
+ACT_AS -- UC_AS_Auto
+@enduml
