@@ -687,7 +687,7 @@ CP_PsConfigParser --> EXT_PYAMOSA
 CP_TwoStepsConfigParser --> EXT_PYAMOSA
 
 ' Flows use scientific stack and filesystem
-F_* as dummyFlows
+F_ as dummyFlows
 F_GREP --> EXT_SCI_PY
 F_GREPSK --> EXT_SCI_PY
 F_LCOR --> EXT_SCI_PY
@@ -720,7 +720,7 @@ HDL_GREP --> EXT_FS
 HDL_PS --> EXT_FS
 
 ' Optimization uses pyamosa
-OPT_* as dummyOpt
+OPT_ as dummyOpt
 OPT_BaseMop --> EXT_PYAMOSA
 OPT_SingleStepAls --> EXT_PYAMOSA
 OPT_SingleStepAlsWc --> EXT_PYAMOSA
@@ -1479,15 +1479,15 @@ package "ConfigParsers" {
   ConfigParser <|-- TwoStepsConfigParser
 
   ' Dependencies to model and external configs
-  OneStepConfigParser ..> "ErrorConfig"
+  OneStepConfigParser ..> ErrorConfig
   OneStepConfigParser ..> ALSConfig
   OneStepConfigParser ..> "pyamosa.Config"
   OneStepConfigParser ..> "pyamosa.Problem" : termination_criterion uses
-  PSConfigParser ..> "ErrorConfig"
+  PSConfigParser ..> ErrorConfig
   PSConfigParser ..> DtGenConfigParser
   PSConfigParser ..> ALSConfig
   PSConfigParser ..> "pyamosa.Config"
-  TwoStepsConfigParser ..> "ErrorConfig"
+  TwoStepsConfigParser ..> ErrorConfig
   TwoStepsConfigParser ..> ALSConfig
   TwoStepsConfigParser ..> "pyamosa.Config"
 }
@@ -1668,7 +1668,7 @@ package "HDLGenerators" {
   HDLGenerator ..> Classifier
   HDLGenerator ..> YosysHelper
   HDLGenerator ..> LutMapper
-  GREPHdlGenerator ..> "Flows.GREP.GREP" : set_pruning_conf()
+  GREPHdlGenerator ..> GREP : set_pruning_conf()
 }
 
 package "Flows.GREP" {
@@ -1684,16 +1684,15 @@ package "Flows.GREP" {
     + evaluate_accuracy()
     + evaluate_accuracy_draw()
     + split_test_dataset(...)
-    + evaluate_redundancy()
+    + evaluate_redundancy(...)
     + sort_leaves_by_cost(...)
     + get_cost()
     + compare()
-    --
-    class CostCriterion {
-      + depth
-      + activity
-      + combined
-    }
+  }
+  class GREP_CostCriterion {
+    + depth
+    + activity
+    + combined
   }
   class LossBasedGREP {
     + trim(cost_criterion)
@@ -1707,6 +1706,7 @@ package "Flows.GREP" {
   GREP <|-- ResiliencyBasedGREP
   GREP ..> Classifier
   GREP ..> DecisionTree
+  GREP --> GREP_CostCriterion
 }
 
 package "Flows.GREPSK" {
@@ -1719,13 +1719,12 @@ package "Flows.GREPSK" {
     + get_best_leaf(...)
     + sort_leaves_by_cost(...)
     + get_cost()
-    --
-    class CostCriterion {
-      + depth
-      + activity
-      + combined
-      + crit_to_str(...)
-    }
+  }
+  class GREPSK_CostCriterion {
+    + depth
+    + activity
+    + combined
+    + crit_to_str(...)
   }
   class LossBasedGREPSK {
     + split_pruning_validation_set(...)
@@ -1742,6 +1741,7 @@ package "Flows.GREPSK" {
   GREPSK <|-- LossBasedGREPSK
   GREPSK <|-- ResiliencyBasedGREPSK
   GREPSK ..> SKRF
+  GREPSK --> GREPSK_CostCriterion
 }
 
 package "Flows.LCOR" {
@@ -1767,8 +1767,8 @@ package "Flows.LCOR" {
     + init_leaves_scores()
   }
 
-  "Flows.GREP.GREP" <|-- LCOR
-  "Flows.GREP.GREP" <|-- LCOR_AXC
+  GREP <|-- LCOR
+  GREP <|-- LCOR_AXC
   LCOR ..> Classifier
   LCOR_AXC ..> Classifier
 }
@@ -1804,7 +1804,7 @@ package "Flows.TMR" {
 
   MrAxC ..> Classifier
   MrHeu ..> MrAxC
-  TMR ..|> "Flows.GREP.GREP"
+  TMR ..|> GREP
   TMR ..> Classifier
   MrMop ..|> "pyamosa.Problem"
   MrMop ..> MrAxC
@@ -1898,10 +1898,10 @@ package "Logging" {
 }
 
 ' Cross-package key associations
-"Flows.GREP.GREP" ..> "Model.ErrorConfig" : uses thresholds/cfg via flows
-"ConfigParsers.PSConfigParser" ..> "pyamosa.Config"
-"ConfigParsers.OneStepConfigParser" ..> "pyamosa.Config"
-"ConfigParsers.TwoStepsConfigParser" ..> "pyamosa.Config"
+GREP ..> ErrorConfig : uses thresholds/cfg via flows
+PSConfigParser ..> "pyamosa.Config"
+OneStepConfigParser ..> "pyamosa.Config"
+TwoStepsConfigParser ..> "pyamosa.Config"
 
 @enduml
 ```

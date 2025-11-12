@@ -1,5 +1,6 @@
  
 
+% 1 — System Overview
 # SECTION 1 — System Overview
 
 This repository implements “pyALS‑RF”, a software system that ingests trained decision tree–based classifiers (single DecisionTree or ensemble RandomForest), analyzes and transforms them into exact and approximate hardware accelerators, and evaluates trade‑offs between accuracy and implementation cost. The system provides multiple approximation flows (precision scaling, logic pruning, correlated leaf trimming, modular redundancy), supports multi‑objective optimization, generates synthesizable VHDL HDL together with testbenches, and includes comprehensive evaluation, reporting, and fault‑injection capabilities. It targets both algorithm designers and hardware integrators who need to co‑optimize machine learning inference and digital implementation metrics.
@@ -118,6 +119,7 @@ The repository is organized into coherent modules:
 
 This overview reflects concrete capabilities and interfaces observed in the codebase and establishes a common vocabulary and scope for subsequent architecture views.
 
+% 2 — Architectural Context
 ## 2. Architectural Context
 
 This section describes the system’s external environment as it is evident from the codebase. It clarifies which external systems, libraries, and toolchains are used; what file and programmatic interfaces are exposed; what data sources are read or produced; and who the actors are as they appear in the implementation. No diagrams are provided in this section.
@@ -181,6 +183,7 @@ This section describes the system’s external environment as it is evident from
 - Python integrator/developer:
   - Uses the Python API directly to construct Classifier instances, run flows/optimizations, and generate HDL or analysis artifacts programmatically via the provided modules and context factory (ctx_factory).
 
+% 2.1 — Architectural Context – Use Case Diagram
 # Section 2.1 — Architectural Context – Use Case Diagram
 
 This section presents the system-level use cases of the pyALS-RF toolkit as implemented in the repository. It shows how a primary operator interacts with the flows (precision scaling, pruning, modular redundancy, ALS-based, HDL generation, debugging, fault injection, dataset/model generation) and how external tools and libraries (PyAMOSA, scikit-learn/Joblib, Yosys/GHDL, Git server, file system) participate in these use cases. All use cases are named after the concrete functions and scripts present in the codebase to support straightforward validation by the development team.
@@ -204,6 +207,7 @@ Validation notes. The diagram enumerates every externally-invokable flow and hel
 
 External actors are bound to use cases consistently with the implementation, for example PyAMOSA is used by optimization flows, scikit-learn/Joblib by model training and GREPSK, and Yosys/GHDL by HDL generation and resource/energy estimations. The file system is involved wherever configurations, datasets, or outputs are read or written. The diagram can be verified against the corresponding modules and function names in the repository.
 
+% 3 — Containers
 ## 3. Containers
 
 This section identifies the concrete runtime containers involved when executing this codebase. It focuses on deployable applications, external tools/services, and persistent data stores that the system uses at runtime. Source modules are grouped by the process that hosts them to avoid duplicating implementation details while preserving completeness of responsibilities.
@@ -216,6 +220,7 @@ This section identifies the concrete runtime containers involved when executing 
 | File System Data Store | Persistent storage for inputs/outputs and intermediate artifacts: datasets (CSV), models (.pmml, .joblib), pruning configs and directions (JSON5), Pareto fronts (JSON/JSON5), fault collections (JSON5), indexes (TXT), reports (CSV, PDF), generated HDL trees/projects (VHDL, TCL, scripts). Written and read across flows and generators. | Local filesystem; text/binary files (CSV, JSON5/JSON, PMML, VHDL, TXT, PDF). | File I/O only. |
 | Git Remote Repository (optional) | Remote VCS used by git_updater.py to fetch/pull updates of the repository and its submodules at runtime if invoked. | Git via GitPython (HTTPS/SSH). | Git protocol/HTTPS; network I/O triggered by git_updater.git_updater(). |
 
+% 3.1 — Architecture Overview – Component Diagram
 # Section 3.1 — Architecture Overview – Component Diagram
 
 This section presents the component-level view of the software system as implemented in the repository. The diagram groups Python modules by package and shows their key dependencies and interactions with external libraries and tools. It is derived solely from the provided source code to ensure consistency with the actual implementation. The intent is to help both technical and non-technical stakeholders understand the main building blocks, their responsibilities, and how they collaborate to produce configuration-driven approximation flows, analysis, pruning, and HDL generation.
@@ -226,352 +231,14 @@ Figure 3.1-1 shows the complete set of modules, organized by package, and the pr
 
 Figure 3.1-1 — Component Diagram — Architecture Overview (components_overview_component_diagram.puml)
 
-```plantuml
-@startuml 
-
-skinparam componentStyle rectangle
-skinparam packageStyle rectangle
-skinparam ArrowColor #888888
-skinparam Shadowing false
-skinparam defaultFontName Monospace
-
-' External dependencies
-package "External Libraries / Tools" #EFEFEF {
-  component "scikit-learn\n(RandomForest, DecisionTree)" as EXT_SCIKIT
-  component "pyamosa\n(Optimizer, Config, StopCriterion)" as EXT_PYAMOSA
-  component "pyalslib\n(YosysHelper, ALS, utils)" as EXT_PYALSLIB
-  component "numpy / pandas / scipy / tqdm / joblib / jinja2 / anytree / matplotlib / tabulate / graphviz" as EXT_SCI_PY
-  component "File System\n(JSON5 configs, CSV datasets,\noutputs, VHDL sources)" as EXT_FS
-  component "git (GitPython)" as EXT_GIT
-  component "GHDL/Yosys toolchain" as EXT_SYNTH
-}
-
-' Resources (aux/testbench generator)
-package "resources" #FFFFFF {
-  package "vhd/tb/oracles_generator" {
-    component "tb_decision_box_fp.cc" as RES_TB_DBS_ORACLE
-  }
-}
-
-' Core model and domain
-package "src/Model" #FFFFFF {
-  component "Classifier.py" as M_Classifier
-  component "DecisionTree.py" as M_DecisionTree
-  component "DecisionBox.py" as M_DecisionBox
-  component "ErrorConfig.py" as M_ErrorConfig
-  component "FaultCollection.py" as M_FaultCollection
-  component "rank_based.py" as M_RankBased
-}
-
-' Parsing PMML/Joblib and context bootstrapping
-package "src/ConfigParsers" #FFFFFF {
-  component "ConfigParser.py" as CP_ConfigParser
-  component "DtGenConfigParser.py" as CP_DtGenConfigParser
-  component "OneStepConfigParser.py" as CP_OneStepConfigParser
-  component "PsConfigParser.py" as CP_PsConfigParser
-  component "TwoStepsConfigParser.py" as CP_TwoStepsConfigParser
-}
-
-' Flows: orchestration and high-level commands
-package "src/Flows" #FFFFFF {
-
-  package "GREP" {
-    component "GREP.py" as F_GREP
-    component "LossBasedGREP.py" as F_GREP_Loss
-    component "ResiliencyBasedGREP.py" as F_GREP_Res
-  }
-
-  package "GREPSK" {
-    component "GREPSK.py" as F_GREPSK
-    component "LossBasedGREPSK.py" as F_GREPSK_Loss
-    component "ResiliencyBasedGREPSK.py" as F_GREPSK_Res
-  }
-
-  package "LCOR" {
-    component "lcor.py" as F_LCOR
-    component "lcor_axc.py" as F_LCOR_AXC
-  }
-
-  package "PS" {
-    component "PsMop.py" as F_PS_Mop
-  }
-
-  package "TMR" {
-    component "tmr.py" as F_TMR
-    component "mr_axc.py" as F_TMR_AxC
-    component "mr_heu.py" as F_TMR_Heu
-    component "mr_moo.py" as F_TMR_Moo
-  }
-
-  package "EnsemblePruning" {
-    component "EnsemblePruner.py" as F_EnsemblePruner
-  }
-
-  component "als_flow.py" as F_als_flow
-  component "als_wc_flow.py" as F_als_wc_flow
-  component "combined_flow.py" as F_combined_flow
-  component "debug_flow.py" as F_debug_flow
-  component "faultinj_flow.py" as F_faultinj_flow
-  component "grep_flow.py" as F_grep_flow
-  component "lcor_flow.py" as F_lcor_flow
-  component "pruner_flow.py" as F_pruner_flow
-  component "ps_flow.py" as F_ps_flow
-  component "tmr_flow.py" as F_tmr_flow
-  component "visit_testing.py" as F_visit_testing
-}
-
-' HDL generation
-package "src/HDLGenerators" #FFFFFF {
-  component "HDLGenerator.py" as HDL_Base
-  component "GREPHdlGenerator.py" as HDL_GREP
-  component "PsHdlGenerator.py" as HDL_PS
-  component "SingleStepAlsHdlGenerator.py" as HDL_S1_ALS
-  component "SingleStepAlsWcHdlGenerator.py" as HDL_S1_ALS_WC
-  component "SingleStepFullHdlGenerator.py" as HDL_S1_FULL
-  component "TwoStepsAlsHdlGenerator.py" as HDL_S2_ALS
-  component "TwoStepsAlsWcHdlGenerator.py" as HDL_S2_ALS_WC
-  component "TwoStepsFullHdlGenerator.py" as HDL_S2_FULL
-  component "LutMapper.py" as HDL_LutMapper
-}
-
-' Multi-objective optimization problems
-package "src/Optimization" #FFFFFF {
-  component "BaseMop.py" as OPT_BaseMop
-  component "FirstStepAlsMop.py" as OPT_FirstStepAls
-  component "SecondStepAlsMop.py" as OPT_SecondStepAls
-  component "SecondStepAlsWcMop.py" as OPT_SecondStepAlsWc
-  component "SecondStepBaseMop.py" as OPT_SecondStepBase
-  component "SecondStepCombinedMop.py" as OPT_SecondStepCombined
-  component "SecondStepWcBaseMop.py" as OPT_SecondStepWcBase
-  component "SingleStepAlsMop.py" as OPT_SingleStepAls
-  component "SingleStepAlsWcMop.py" as OPT_SingleStepAlsWc
-  component "SingleStepCombinedMop.py" as OPT_SingleStepCombined
-}
-
-' scikit adapter
-package "src/scikit" #FFFFFF {
-  component "RandonForestClassifierMV.py" as SK_RF_MV
-}
-
-' Context and utilities
-package "src" #FFFFFF {
-  component "ctx_factory.py" as U_CTX
-  component "dtgen.py" as U_DTGEN
-  component "git_updater.py" as U_GIT
-  component "hdl_generation.py" as U_HDL_GEN
-  component "logger.py" as U_LOGGER
-  component "plot.py" as U_PLOT
-}
-
-' CLI script at repo root
-component "pruning.py" as CLI_PRUNING
-
-' -------------------------
-' Internal dependencies
-' -------------------------
-
-' Model internals
-M_Classifier --> M_DecisionTree
-M_DecisionTree --> M_DecisionBox
-M_FaultCollection --> M_Classifier
-M_RankBased --> M_Classifier
-
-' Config parsers
-CP_OneStepConfigParser --> CP_ConfigParser
-CP_PsConfigParser --> CP_ConfigParser
-CP_TwoStepsConfigParser --> CP_ConfigParser
-CP_DtGenConfigParser --> CP_ConfigParser
-
-CP_OneStepConfigParser --> M_ErrorConfig
-CP_PsConfigParser --> M_ErrorConfig
-CP_TwoStepsConfigParser --> M_ErrorConfig
-CP_PsConfigParser --> CP_DtGenConfigParser
-
-' Flows -> Core model
-F_GREP --> M_Classifier
-F_GREP_Loss --> F_GREP
-F_GREP_Res --> F_GREP
-
-F_GREPSK --> EXT_SCIKIT
-F_GREPSK_Loss --> F_GREPSK
-F_GREPSK_Res --> F_GREPSK
-
-F_LCOR --> F_GREP
-F_LCOR_AXC --> F_GREP
-
-F_PS_Mop --> M_Classifier
-
-F_TMR --> F_GREP
-F_TMR_AxC --> M_Classifier
-F_TMR_Heu --> F_TMR_AxC
-F_TMR_Moo --> F_TMR_AxC
-
-F_EnsemblePruner --> M_Classifier
-
-' Flow glue/orchestration
-F_als_flow --> CP_OneStepConfigParser
-F_als_flow --> CP_TwoStepsConfigParser
-F_als_flow --> M_Classifier
-F_als_wc_flow --> CP_OneStepConfigParser
-F_als_wc_flow --> CP_TwoStepsConfigParser
-F_combined_flow --> CP_OneStepConfigParser
-F_combined_flow --> CP_TwoStepsConfigParser
-
-F_debug_flow --> CP_PsConfigParser
-F_faultinj_flow --> CP_PsConfigParser
-F_faultinj_flow --> M_Classifier
-F_faultinj_flow --> M_FaultCollection
-
-F_grep_flow --> CP_PsConfigParser
-F_grep_flow --> F_GREP
-F_lcor_flow --> CP_PsConfigParser
-F_lcor_flow --> F_LCOR
-F_lcor_flow --> F_LCOR_AXC
-F_pruner_flow --> CP_PsConfigParser
-F_pruner_flow --> F_EnsemblePruner
-F_ps_flow --> CP_PsConfigParser
-F_ps_flow --> F_PS_Mop
-F_tmr_flow --> CP_PsConfigParser
-F_tmr_flow --> F_TMR
-F_tmr_flow --> F_TMR_AxC
-F_tmr_flow --> F_TMR_Heu
-F_tmr_flow --> F_TMR_Moo
-F_visit_testing --> CP_PsConfigParser
-F_visit_testing --> M_FaultCollection
-
-' HDL generators
-HDL_Base --> M_Classifier
-HDL_GREP --> HDL_Base
-HDL_GREP --> F_GREP
-HDL_PS --> HDL_Base
-HDL_S1_ALS --> HDL_Base
-HDL_S1_ALS_WC --> HDL_Base
-HDL_S1_FULL --> HDL_Base
-HDL_S2_ALS --> HDL_Base
-HDL_S2_ALS_WC --> HDL_Base
-HDL_S2_FULL --> HDL_Base
-HDL_LutMapper --> HDL_Base
-
-' Optimization problems
-OPT_BaseMop --> M_Classifier
-OPT_SingleStepAls --> OPT_BaseMop
-OPT_SingleStepAlsWc --> OPT_BaseMop
-OPT_SingleStepCombined --> OPT_BaseMop
-OPT_FirstStepAls --> M_DecisionTree
-OPT_SecondStepBase --> OPT_BaseMop
-OPT_SecondStepAls --> OPT_SecondStepBase
-OPT_SecondStepAlsWc --> OPT_SecondStepBase
-OPT_SecondStepWcBase --> OPT_BaseMop
-OPT_SecondStepCombined --> OPT_SecondStepBase
-
-' scikit adapter usage
-M_Classifier --> SK_RF_MV
-
-' Context / utilities
-U_CTX --> CP_PsConfigParser
-U_CTX --> M_Classifier
-U_CTX --> F_PS_Mop
-U_HDL_GEN --> HDL_Base
-U_HDL_GEN --> HDL_GREP
-U_HDL_GEN --> HDL_PS
-U_HDL_GEN --> U_CTX
-U_DTGEN --> CP_DtGenConfigParser
-U_DTGEN --> SK_RF_MV
-U_DTGEN --> M_Classifier
-U_PLOT <- F_GREP
-U_PLOT <- F_GREPSK
-U_LOGGER <- U_CTX
-
-' CLI
-CLI_PRUNING --> F_GREPSK
-CLI_PRUNING --> EXT_FS
-
-' -------------------------
-' External dependencies
-' -------------------------
-
-' Model parsing and data handling
-M_Classifier --> EXT_SCIKIT
-M_Classifier --> EXT_SCI_PY
-M_Classifier --> EXT_FS
-
-' Config parsers use JSON5 and configs
-CP_ConfigParser --> EXT_FS
-CP_DtGenConfigParser --> EXT_FS
-CP_OneStepConfigParser --> EXT_PYAMOSA
-CP_PsConfigParser --> EXT_PYAMOSA
-CP_TwoStepsConfigParser --> EXT_PYAMOSA
-
-' Flows use scientific stack and filesystem
-F_* as dummyFlows
-F_GREP --> EXT_SCI_PY
-F_GREPSK --> EXT_SCI_PY
-F_LCOR --> EXT_SCI_PY
-F_LCOR_AXC --> EXT_SCI_PY
-F_TMR --> EXT_SCI_PY
-F_TMR_AxC --> EXT_SCI_PY
-F_TMR_Heu --> EXT_SCI_PY
-F_TMR_Moo --> EXT_PYAMOSA
-F_PS_Mop --> EXT_PYAMOSA
-F_ps_flow --> EXT_PYAMOSA
-F_grep_flow --> EXT_FS
-F_lcor_flow --> EXT_FS
-F_pruner_flow --> EXT_FS
-F_tmr_flow --> EXT_FS
-F_faultinj_flow --> EXT_FS
-
-' HDL generation uses pyalslib (Yosys/GHDL)
-HDL_Base --> EXT_PYALSLIB
-HDL_GREP --> EXT_PYALSLIB
-HDL_PS --> EXT_PYALSLIB
-HDL_S1_ALS --> EXT_PYALSLIB
-HDL_S1_ALS_WC --> EXT_PYALSLIB
-HDL_S1_FULL --> EXT_PYALSLIB
-HDL_S2_ALS --> EXT_PYALSLIB
-HDL_S2_ALS_WC --> EXT_PYALSLIB
-HDL_S2_FULL --> EXT_PYALSLIB
-HDL_LutMapper --> EXT_SCI_PY
-HDL_Base --> EXT_FS
-HDL_GREP --> EXT_FS
-HDL_PS --> EXT_FS
-
-' Optimization uses pyamosa
-OPT_* as dummyOpt
-OPT_BaseMop --> EXT_PYAMOSA
-OPT_SingleStepAls --> EXT_PYAMOSA
-OPT_SingleStepAlsWc --> EXT_PYAMOSA
-OPT_SingleStepCombined --> EXT_PYAMOSA
-OPT_FirstStepAls --> EXT_PYAMOSA
-OPT_SecondStepBase --> EXT_PYAMOSA
-OPT_SecondStepAls --> EXT_PYAMOSA
-OPT_SecondStepAlsWc --> EXT_PYAMOSA
-OPT_SecondStepWcBase --> EXT_PYAMOSA
-OPT_SecondStepCombined --> EXT_PYAMOSA
-
-' Utilities
-U_GIT --> EXT_GIT
-U_CTX --> EXT_PYALSLIB
-U_CTX --> EXT_PYAMOSA
-U_CTX --> EXT_FS
-U_DTGEN --> EXT_SCIKIT
-U_DTGEN --> EXT_SCI_PY
-U_DTGEN --> EXT_FS
-U_HDL_GEN --> EXT_FS
-U_LOGGER --> EXT_FS
-U_PLOT --> EXT_SCI_PY
-
-' Resources / toolchain
-RES_TB_DBS_ORACLE --> EXT_FS
-EXT_PYALSLIB --> EXT_SYNTH
-
-@enduml
-```
+![diagram_002_6e0945d34c](diagram_002_6e0945d34c.png)
 
 Notes for validation:
 - Every Python module and the C++ utility in the repository is represented as a component within its package. Names match filenames exactly to ease cross-checking.
 - Dependencies reflect explicit imports and calls observed in the source. For example, GREP components depend on Model.Classifier and DecisionTree; HDL generators depend on Model plus pyalslib.YosysHelper; Optimization problems depend on pyamosa and the Model; flows orchestrate configuration parsing, model creation, algorithm execution, and persistence.
 - External components denote third-party libraries and the filesystem/toolchain used by the system as per the imports and usage patterns in the code.
 
+% 4 — Components
 ## 4. Components
 
 This section identifies all internal modules, classes, and public functions grouped by package. For each component, it states its primary responsibility and how it collaborates with others (imports, calls, data exchanged). The intent is to provide a verifiable map between concrete implementation artifacts in the repository and their runtime roles and dependencies. No diagrams are included here.
@@ -735,6 +402,7 @@ This section identifies all internal modules, classes, and public functions grou
 
 
 
+% 5 — Code-Level View
 # Section 5 — Code-Level View
 
 This section maps the system’s architectural elements to concrete source code artifacts, identifies the main program entry points, and summarizes the major modules and their responsibilities. It is intended to help developers and integrators validate that the codebase implements the described architecture and to locate implementation details efficiently.
@@ -1221,503 +889,12 @@ External dependencies (as used in code): numpy, pandas, sklearn, joblib, scipy, 
 
 This mapping comprehensively covers all modules, classes, and top-level functions present in the repository and ties them back to their architectural roles.
 
+% 5.1 — Class Diagram
 ## SECTION 5.1 — Class Diagram
 
 This section presents the complete static structure of the system as derived from the codebase. The PlantUML class diagram groups classes by module (packages) and captures inheritance, composition/aggregation, and key dependencies among the major subsystems: Model, HDL generators, approximation flows (GREP, GREPSK, LCOR, TMR, PS), configuration parsers, optimization problems, and the scikit integration. External library types (e.g., pyamosa, pyalslib, scikit-learn) are shown as external classes to clarify dependencies without introducing undocumented internals. The diagram is faithful to the implementation and does not introduce elements not present in the source.
 
-```plantuml
-@startuml
-skinparam packageStyle rectangle
-skinparam shadowing false
-skinparam classAttributeIconSize 0
-
-' External dependencies (libraries/types referenced by the codebase)
-class "pyamosa.Problem" <<external>>
-class "pyamosa.Optimizer" <<external>>
-class "pyamosa.Config" <<external>>
-class "pyalslib.YosysHelper" as YosysHelper <<external>>
-class "pyalslib.ALSConfig" as ALSConfig <<external>>
-class "pyalslib.ALSGraph" as ALSGraph <<external>>
-class "pyalslib.ALSCatalog" as ALSCatalog <<external>>
-class "sklearn.ensemble.RandomForestClassifier" as SKRF <<external>>
-
-package "ConfigParsers" {
-  class ConfigParser {
-    - configuration
-    + __init__(configfile: str)
-  }
-  class DtGenConfigParser {
-    + separator
-    + outcome_col
-    + skip_header
-    + attributes_name
-    + classes_name
-    + separated_training
-    + separated_hyperparametrization
-  }
-  class OneStepConfigParser {
-    + pmml
-    + outdir
-    + error_conf
-    + als_conf
-    + optimizer_conf
-    + termination_criterion
-  }
-  class PSConfigParser {
-    + model_source
-    + outdir
-    + error_conf
-    + als_conf
-    + train_dataset
-    + optimizer_conf
-    + variable_grouping_strategy
-    + transfer_strategy_objectives
-    + transfer_strategy_variables
-    + termination_criterion
-  }
-  class TwoStepsConfigParser {
-    + pmml
-    + outdir
-    + error_conf
-    + als_conf
-    + fst_optimizer_conf
-    + fst_termination_criterion
-    + snd_optimizer_conf
-    + snd_termination_criterion
-  }
-
-  ConfigParser <|-- DtGenConfigParser
-  ConfigParser <|-- OneStepConfigParser
-  ConfigParser <|-- PSConfigParser
-  ConfigParser <|-- TwoStepsConfigParser
-
-  ' Dependencies to model and external configs
-  OneStepConfigParser ..> "ErrorConfig"
-  OneStepConfigParser ..> ALSConfig
-  OneStepConfigParser ..> "pyamosa.Config"
-  OneStepConfigParser ..> "pyamosa.Problem" : termination_criterion uses
-  PSConfigParser ..> "ErrorConfig"
-  PSConfigParser ..> DtGenConfigParser
-  PSConfigParser ..> ALSConfig
-  PSConfigParser ..> "pyamosa.Config"
-  TwoStepsConfigParser ..> "ErrorConfig"
-  TwoStepsConfigParser ..> ALSConfig
-  TwoStepsConfigParser ..> "pyamosa.Config"
-}
-
-package "Model" {
-  class Classifier {
-    + trees : list[DecisionTree]
-    + model_features
-    + model_classes
-    + classes_name
-    + x_test, y_test
-    + x_train, y_train
-    + parse(...)
-    + pmml_parser(...)
-    + joblib_parser(...)
-    + read_test_set(...)
-    + read_training_set(...)
-    + predict(...)
-    + evaluate_test_dataset()
-    + evaluate_accuracy(...)
-    + compute_leaves_idx(...)
-    + get_votes_vectors_by_leaves_idx(...)
-    + get_leaves_costs_by_leaves_idx(...)
-    + get_class_labels_by_leaves_idx(...)
-    + get_accuracy_from_labels(...)
-    + get_accuracy_by_leaves_idx(...)
-    + transform_leaves_into_classess(...)
-    + transform_assertion_into_directions(...)
-    + prune_trees(...)
-    + inject_tree_boxes_faults_fb(...)
-    + inject_bns_faults(...)
-    + restore_dbs(...)
-    + restore_bns(...)
-    + store_bns()
-    + set_nabs(...)
-    + reset_nabs_configuration()
-    + reset_assertion_configuration()
-    + brace4ALS(...)
-    + get_als_cells_per_tree()
-    + get_als_dv_upper_bound()
-    + get_current_required_aig_nodes()
-    + get_total_retained()
-  }
-
-  class DecisionTree {
-    + name
-    + decision_boxes : list[DecisionBox]
-    + leaves
-    + boolean_networks
-    + class_assertions
-    + visit(x)
-    + visit_by_leaf_idx(list)
-    + visit_by_leaves(list)
-    + get_boxes_output(x)
-    + get_leaves_idx_by_class(...)
-    + get_leaves_idx_not_in_class(...)
-    + define_boolean_expression(...)
-    + get_boolean_net(...)
-    + get_db_from_name(...)
-    + replace_db_with_fb(...)
-    + restore_db(...)
-    + inj_fault_assertion_functions(...)
-    + inj_fault_assertion_functions_ws(...)
-    + get_bns_functions()
-    + set_box_data_type(...)
-    + set_end_start_sample(...)
-  }
-
-  class DecisionBox {
-    + name
-    + feature_name
-    + data_type
-    + operator
-    + threshold
-    + nab
-    + compare(input) : bool
-    + get_struct() : dict
-    + get_str_op() : str
-  }
-
-  enum "DecisionBox.CompOperator" as CompOperator {
-    lessThan
-    equal
-    greaterThan
-  }
-
-  class FaultedBox {
-    + name
-    + feature_name
-    + data_type
-    + fixed_value
-    + compare(input) : bool
-  }
-
-  class ErrorConfig {
-    + test_dataset
-    + max_loss_perc
-    + dataset_description
-  }
-
-  class FaultCollection {
-    + list_of_fault_sites
-    + list_of_feature_fault_sites
-    + list_of_db_fault_sites
-    + list_of_bn_fault_sites
-    + sample_faults(...)
-    + faults_to_json5(...)
-    + faults_to_json5_list(...)
-  }
-
-  Classifier *-- "1..*" DecisionTree
-  DecisionTree *-- "0..*" DecisionBox
-  DecisionBox o-- CompOperator
-  DecisionTree ..> FaultedBox : replaces DB on FI
-  FaultCollection ..> Classifier : reads model structure
-}
-
-package "HDLGenerators" {
-  class HDLGenerator {
-    + classifier : Classifier
-    + yshelper : YosysHelper
-    + destination : str
-    + get_resource_usage()
-    + get_dyn_energy()
-    + generate_exact_implementation(...)
-    + implement_decision_boxes(...)
-    + implement_assertions(...)
-    + generate_classifier(...)
-    + generate_rejection_module(...)
-    + generate_majority_voter(...)
-    + generate_tcl(...)
-    + generate_exact_tb(...)
-    + generate_cmakelists(...)
-    + set_comp_type(...)
-  }
-  class GREPHdlGenerator {
-    + generate_axhdl(pruning_configuration, ...)
-  }
-  class PsHdlGenerator {
-    + pareto_path
-    + generate_axhdl(pareto_set, ...)
-    + get_resource_usage_custom()
-    + generate_ax_tb(...)
-  }
-  class SingleStepAlsHdlGenerator {
-    + generate_axhdl(configurations, ...)
-  }
-  class SingleStepAlsWcHdlGenerator {
-    + generate_axhdl(configurations, ...)
-  }
-  class SingleStepFullHdlGenerator {
-    + generate_axhdl(configurations, ...)
-  }
-  class TwoStepsAlsHdlGenerator {
-    + generate_axhdl(configurations, inner_configuration, ...)
-  }
-  class TwoStepsAlsWcHdlGenerator {
-    + generate_axhdl(outer_configurations, inner_configuration, ...)
-  }
-  class TwoStepsFullHdlGenerator {
-    + generate_axhdl(outer_configurations, inner_configuration, ...)
-  }
-  class LutMapper {
-    + k : int
-    + map(minterms, signal_name) : list
-    + split_minterm(literals, lut_tech) : list
-  }
-
-  HDLGenerator <|-- GREPHdlGenerator
-  HDLGenerator <|-- PsHdlGenerator
-  HDLGenerator <|-- SingleStepAlsHdlGenerator
-  HDLGenerator <|-- SingleStepAlsWcHdlGenerator
-  HDLGenerator <|-- SingleStepFullHdlGenerator
-  HDLGenerator <|-- TwoStepsAlsHdlGenerator
-  HDLGenerator <|-- TwoStepsAlsWcHdlGenerator
-  HDLGenerator <|-- TwoStepsFullHdlGenerator
-
-  HDLGenerator ..> Classifier
-  HDLGenerator ..> YosysHelper
-  HDLGenerator ..> LutMapper
-  GREPHdlGenerator ..> "Flows.GREP.GREP" : set_pruning_conf()
-}
-
-package "Flows.GREP" {
-  class GREP {
-    + classifier : Classifier
-    + pruning_set_fraction : float
-    + max_loss : float
-    + min_resiliency : int
-    + ncpus : int
-    + trim(cost_criterion)
-    + set_pruning_conf(classifier, pruning_conf)
-    + set_pruning(tree, pruning_configuration, ...)
-    + evaluate_accuracy()
-    + evaluate_accuracy_draw()
-    + split_test_dataset(...)
-    + evaluate_redundancy()
-    + sort_leaves_by_cost(...)
-    + get_cost()
-    + compare()
-    --
-    class CostCriterion {
-      + depth
-      + activity
-      + combined
-    }
-  }
-  class LossBasedGREP {
-    + trim(cost_criterion)
-  }
-  class ResiliencyBasedGREP {
-    + trim(cost_criterion)
-    + update_redundancy(samples)
-  }
-
-  GREP <|-- LossBasedGREP
-  GREP <|-- ResiliencyBasedGREP
-  GREP ..> Classifier
-  GREP ..> DecisionTree
-}
-
-package "Flows.GREPSK" {
-  class GREPSK {
-    + classifier : SKRF
-    + pruning_set_fraction : float
-    + ncpus : int
-    + evaluate_error_resiliency()
-    + update_error_resiliency(...)
-    + get_best_leaf(...)
-    + sort_leaves_by_cost(...)
-    + get_cost()
-    --
-    class CostCriterion {
-      + depth
-      + activity
-      + combined
-      + crit_to_str(...)
-    }
-  }
-  class LossBasedGREPSK {
-    + split_pruning_validation_set(...)
-    + trim_fixed(cost_criterion)
-    + trim_alternative(cost_criterion)
-    + dump_report(path)
-  }
-  class ResiliencyBasedGREPSK {
-    + split_pruning_validation_set(...)
-    + trim(cost_criterion)
-    + dump_report(path)
-  }
-
-  GREPSK <|-- LossBasedGREPSK
-  GREPSK <|-- ResiliencyBasedGREPSK
-  GREPSK ..> SKRF
-}
-
-package "Flows.LCOR" {
-  class LCOR {
-    + leaf_scores
-    + corr_per_leaf
-    + trim(report, report_path)
-    + trim_alternative(report, loss_lb, loss_ub, step)
-    + samples_per_leaves(...)
-    + compute_leaves_correlation(...)
-    + compute_leaves_score(...)
-    + init_leaves_scores()
-    + predispose_trim()
-  }
-  class LCOR_AXC {
-    + leaf_scores
-    + corr_per_leaf
-    + pruning_path
-    + report_path
-    + trim()
-    + predispose_trim()
-    + inner_trim(report_path)
-    + init_leaves_scores()
-  }
-
-  "Flows.GREP.GREP" <|-- LCOR
-  "Flows.GREP.GREP" <|-- LCOR_AXC
-  LCOR ..> Classifier
-  LCOR_AXC ..> Classifier
-}
-
-package "Flows.TMR" {
-  class MrAxC {
-    + classifier : Classifier
-    + sample_dse_samples(...)
-    + compute_leaves_costs()
-    + initialize_tree_prediction_per_sample()
-    + mr_predict(...)
-    + tune_thds(...)
-    + dump_cfg(...)
-    + dump_mop_val_indexes(...)
-  }
-  class MrHeu {
-    + heu_tree_acc()
-    + heu_tree_acc_2()
-    + do_full_ranking_accuracy()
-    + do_full_ranking_margin()
-    + initialize_problem(mr_axc)
-  }
-  class MrMop {
-    + initialize_problem(mr_axc)
-    + evaluate(x, out)
-  }
-  class TMR {
-    + approx(report=True, ...)
-    + get_pruning_set_classes()
-    + visit_tmr_draw_multicore()
-    + calculate_class_metrics(...)
-  }
-
-  MrAxC ..> Classifier
-  MrHeu ..> MrAxC
-  TMR ..|> "Flows.GREP.GREP"
-  TMR ..> Classifier
-  MrMop ..|> "pyamosa.Problem"
-  MrMop ..> MrAxC
-}
-
-package "Flows.PS" {
-  class PsMop {
-    + classifier : Classifier
-    + evaluate(x, out)
-    + archived_actual_accuracy(archive)
-  }
-  class RankBasedPsMop {
-    + classifier : Classifier
-    + evaluate(x, out)
-    + archived_actual_accuracy(archive)
-  }
-
-  PsMop ..|> "pyamosa.Problem"
-  RankBasedPsMop ..|> "pyamosa.Problem"
-  PsMop ..> Classifier
-  RankBasedPsMop ..> Classifier
-}
-
-package "Optimization" {
-  class BaseMop {
-    + classifier : Classifier
-    + baseline_accuracy
-  }
-  class FirstStepAlsMop {
-    + evaluate(x, out)
-  }
-  class SecondStepBaseMop {
-    + error_conf
-    + opt_conf
-  }
-  class SecondStepAlsMop {
-    + evaluate(x, out)
-  }
-  class SecondStepWcBaseMop {
-    + error_conf
-  }
-  class SecondStepAlsWcMop {
-    + evaluate(x, out)
-  }
-  class SecondStepCombinedMop {
-    + evaluate(x, out)
-  }
-  class SingleStepAlsMop {
-    + evaluate(x, out)
-  }
-  class SingleStepAlsWcMop {
-    + evaluate(x, out)
-  }
-  class SingleStepCombinedMop {
-    + evaluate(x, out)
-  }
-
-  BaseMop ..> Classifier
-
-  FirstStepAlsMop ..|> "pyamosa.Problem"
-  SecondStepAlsMop ..|> "pyamosa.Problem"
-  SecondStepAlsWcMop ..|> "pyamosa.Problem"
-  SecondStepCombinedMop ..|> "pyamosa.Problem"
-  SingleStepAlsMop ..|> "pyamosa.Problem"
-  SingleStepAlsWcMop ..|> "pyamosa.Problem"
-  SingleStepCombinedMop ..|> "pyamosa.Problem"
-
-  SecondStepBaseMop <|-- SecondStepAlsMop
-  SecondStepBaseMop <|-- SecondStepCombinedMop
-  SecondStepWcBaseMop <|-- SecondStepAlsWcMop
-
-  BaseMop <|-- SecondStepBaseMop
-  BaseMop <|-- SecondStepWcBaseMop
-  BaseMop <|-- SingleStepAlsMop
-  BaseMop <|-- SingleStepAlsWcMop
-  BaseMop <|-- SingleStepCombinedMop
-}
-
-package "scikit" {
-  class RandomForestClassifierMV {
-    + predict_proba(X)
-    + fake()
-  }
-  RandomForestClassifierMV ..|> SKRF
-}
-
-package "Logging" {
-  class CustomFormatter {
-    + format(record)
-  }
-}
-
-' Cross-package key associations
-"Flows.GREP.GREP" ..> "Model.ErrorConfig" : uses thresholds/cfg via flows
-"ConfigParsers.PSConfigParser" ..> "pyamosa.Config"
-"ConfigParsers.OneStepConfigParser" ..> "pyamosa.Config"
-"ConfigParsers.TwoStepsConfigParser" ..> "pyamosa.Config"
-
-@enduml
-```
+![diagram_003_d072959d52](diagram_003_d072959d52.png)
 
 The diagram shows:
 
@@ -1731,6 +908,7 @@ The diagram shows:
 
 This class diagram is directly derived from the code and can be validated by inspecting the class definitions, imports, and attribute usage across the modules listed above.
 
+% 6 — Cross-Cutting Concerns
 ## 6. Cross-Cutting Concerns
 
 This section identifies and describes cross-cutting aspects that are implemented across multiple modules of the codebase. The goal is to make implicit systemic mechanisms explicit so that stakeholders can reason about quality attributes such as observability, robustness, performance, and operational concerns. All items below cite concrete code evidence to enable validation by the development team.
@@ -1757,6 +935,7 @@ This section identifies and describes cross-cutting aspects that are implemented
 | Input/output formats and corrective parsing | JSON5 read/write throughout (e.g., pruning configs, faults, archives); visit_testing.py and faultinj_flow.py include corrective parsing for malformed JSON5-like content | The system favors JSON5 for its comments/tolerance. Some utilities sanitize input archives to handle non-JSON-compliant fragments, improving robustness when consuming external artefacts. |
 | Security posture (absence of authn/z; eval usage) | No authentication/authorization modules; dynamic eval of internally-produced SoP; filesystem writes under configured outdir | The tooling targets offline experiments and HDL generation. There is no authn/z. Security-sensitive patterns include eval of expressions (trusted source), and reading/writing many files from configuration-provided paths. Operators should treat inputs as trusted or add validation to mitigate injection or path traversal risks when exposing as a service. |
 
+% 7 — Quality Attributes and Rationale
 ## 7. Quality Attributes and Rationale
 
 This section analyzes the quality attributes explicitly supported by the implementation. Each attribute is justified with concrete evidence taken from the source code (file paths, classes, methods), explaining the rationale behind the design choices. No statements are speculative; all entries are grounded in the codebase supplied.
@@ -1781,6 +960,7 @@ This section analyzes the quality attributes explicitly supported by the impleme
 | Accuracy Preservation (baselines and loss) | Baseline accuracies calculated and compared consistently (GREP.evaluate_accuracy, GREPSK/LossBasedGREPSK.baseline/pruned metrics, PS/PsMop baselines, MR_HEU baseline vs approx loss). | All approximation flows gate decisions on measured accuracy deltas, ensuring quality constraints (e.g., max_loss) are respected. |
 | Reproducibility (index dumps and checkpoints) | Flows dump MOP/validation/test indexes and checkpoints (e.g., ps_flow writes mop_indexes.txt/val_indexes.txt; LCOR_AXC saves idx files; AMOSA checkpoint files configured in parsers). | Persisting dataset splits and optimizer checkpoints enables deterministic reruns and cross-validation across different machines and sessions. |
 
+% 8 — Deployment View
 ## 8. Deployment View
 
 This section explains how the software is allocated to infrastructure and which runtime artifacts are produced, as derived strictly from the repository’s code. The system is a Python application that runs as a single-process, single-host toolchain with optional multiprocessing and external EDA tool invocation for HDL generation and analysis. No client–server or distributed deployment is implemented; all flows execute locally, interact with the filesystem, and optionally call external tools through Python bindings.
@@ -1848,13 +1028,14 @@ This section explains how the software is allocated to infrastructure and which 
   - Multiprocessing uses cpu_count() by default and partitions work across cores (Classifier.p_tree and Pools across flows). Memory and CPU allocations are local to the single node
   - Long-running optimizations (pyamosa) use on-disk caches and checkpoint files in outdir subpaths; no shared-state across machines is implemented
 
+% 8.1 — Deployment Diagram
 # Section 8.1 — Deployment Diagram
 
 This section describes the concrete runtime topology of the system as implemented in the codebase. The software runs as a Python process on a single host, orchestrating machine‑learning flows, pruning/heuristics, and HDL generation. Computation is parallelized with multiprocessing and thread pools, while hardware-oriented assets are produced by HDL generators that rely on external EDA toolchains via pyalslib. Inputs and outputs are exchanged exclusively through the local file system (datasets, models, JSON5 configurations, reports, and generated HDL sources). No networked services or distributed components are used.
 
 ## Figure 8.1 — System Deployment (PlantUML)
 
-![diagram_002_e41dd1aba1](diagram_002_e41dd1aba1.png)
+![diagram_004_e41dd1aba1](diagram_004_e41dd1aba1.png)
 
 ### Deployment rationale
 

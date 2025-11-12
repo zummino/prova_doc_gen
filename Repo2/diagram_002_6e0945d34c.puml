@@ -274,7 +274,7 @@ CP_PsConfigParser --> EXT_PYAMOSA
 CP_TwoStepsConfigParser --> EXT_PYAMOSA
 
 ' Flows use scientific stack and filesystem
-F_* as dummyFlows
+F_ as dummyFlows
 F_GREP --> EXT_SCI_PY
 F_GREPSK --> EXT_SCI_PY
 F_LCOR --> EXT_SCI_PY
@@ -307,7 +307,7 @@ HDL_GREP --> EXT_FS
 HDL_PS --> EXT_FS
 
 ' Optimization uses pyamosa
-OPT_* as dummyOpt
+OPT_ as dummyOpt
 OPT_BaseMop --> EXT_PYAMOSA
 OPT_SingleStepAls --> EXT_PYAMOSA
 OPT_SingleStepAlsWc --> EXT_PYAMOSA
