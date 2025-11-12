@@ -1,5 +1,5 @@
 @startuml
-setnamespaceSeparator /
+set namespaceSeparator /
 skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
 hide circle
@@ -92,9 +92,9 @@ package it.univaq/gymportal/model {
 '========================
 package it.univaq/gymportal/business {
   abstract class Service {
-    # static String urlDB
-    # static String userDB
-    # static String pswDB
+    # {static} String urlDB
+    # {static} String userDB
+    # {static} String pswDB
     + void printRS(java.sql.ResultSet)
   }
 
@@ -174,21 +174,21 @@ package it.univaq/gymportal/business/impl {
   class UserServiceImpl
 }
 
-it.univaq/gymportal/business/impl/CourseServiceImpl -|> it.univaq/gymportal/business/CourseService
-it.univaq/gymportal/business/impl/FavoriteCourseServiceImpl -|> it.univaq/gymportal/business/FavoriteCourseService
-it.univaq/gymportal/business/impl/FavoriteGymServiceImpl -|> it.univaq/gymportal/business/FavoriteGymService
-it.univaq/gymportal/business/impl/FeedbackCourseServiceImpl -|> it.univaq/gymportal/business/FeedbackCourseService
-it.univaq/gymportal/business/impl/FeedbackGymServiceImpl -|> it.univaq/gymportal/business/FeedbackGymService
-it.univaq/gymportal/business/impl/GymServiceImpl -|> it.univaq/gymportal/business/GymService
-it.univaq/gymportal/business/impl/UserServiceImpl -|> it.univaq/gymportal/business/UserService
+CourseServiceImpl -|> CourseService
+FavoriteCourseServiceImpl -|> FavoriteCourseService
+FavoriteGymServiceImpl -|> FavoriteGymService
+FeedbackCourseServiceImpl -|> FeedbackCourseService
+FeedbackGymServiceImpl -|> FeedbackGymService
+GymServiceImpl -|> GymService
+UserServiceImpl -|> UserService
 
-it.univaq/gymportal/business/impl/CourseServiceImpl --|> it.univaq/gymportal/business/Service
-it.univaq/gymportal/business/impl/FavoriteCourseServiceImpl --|> it.univaq/gymportal/business/Service
-it.univaq/gymportal/business/impl/FavoriteGymServiceImpl --|> it.univaq/gymportal/business/Service
-it.univaq/gymportal/business/impl/FeedbackCourseServiceImpl --|> it.univaq/gymportal/business/Service
-it.univaq/gymportal/business/impl/FeedbackGymServiceImpl --|> it.univaq/gymportal/business/Service
-it.univaq/gymportal/business/impl/GymServiceImpl --|> it.univaq/gymportal/business/Service
-it.univaq/gymportal/business/impl/UserServiceImpl --|> it.univaq/gymportal/business/Service
+CourseServiceImpl --|> Service
+FavoriteCourseServiceImpl --|> Service
+FavoriteGymServiceImpl --|> Service
+FeedbackCourseServiceImpl --|> Service
+FeedbackGymServiceImpl --|> Service
+GymServiceImpl --|> Service
+UserServiceImpl --|> Service
 
 '========================
 ' Exceptions
@@ -206,9 +206,9 @@ package it.univaq/gymportal/exceptions {
   class ServiceExceptionMapper
 }
 
-it.univaq/gymportal/exceptions/ServiceException --|> java/lang/Exception
-it.univaq/gymportal/exceptions/ServiceExceptionMapper ..> it.univaq/gymportal/exceptions/ServiceException
-it.univaq/gymportal/exceptions/ServiceExceptionMapper ..> it.univaq/gymportal/exceptions/ErrorMessage
+ServiceException --|> Exception
+ServiceExceptionMapper ..> ServiceException
+ServiceExceptionMapper ..> ErrorMessage
 
 '========================
 ' REST Resources
@@ -232,45 +232,45 @@ package it.univaq/gymportal/resources/rest {
 }
 
 ' Resource -> Service implementation dependencies (as coded)
-it.univaq/gymportal/resources/rest/AuthRes ..> it.univaq/gymportal/business/impl/UserServiceImpl
-it.univaq/gymportal/resources/rest/GymRes ..> it.univaq/gymportal/business/impl/GymServiceImpl
-it.univaq/gymportal/resources/rest/GymRes ..> it.univaq/gymportal/business/impl/UserServiceImpl
-it.univaq/gymportal/resources/rest/CourseRes ..> it.univaq/gymportal/business/impl/CourseServiceImpl
-it.univaq/gymportal/resources/rest/CourseRes ..> it.univaq/gymportal/business/impl/UserServiceImpl
-it.univaq/gymportal/resources/rest/CourseRes ..> it.univaq/gymportal/business/impl/GymServiceImpl
-it.univaq/gymportal/resources/rest/FeedbackCourseRes ..> it.univaq/gymportal/business/impl/FeedbackCourseServiceImpl
-it.univaq/gymportal/resources/rest/FeedbackCourseRes ..> it.univaq/gymportal/business/impl/UserServiceImpl
-it.univaq/gymportal/resources/rest/FeedbackGymRes ..> it.univaq/gymportal/business/impl/FeedbackGymServiceImpl
-it.univaq/gymportal/resources/rest/FeedbackGymRes ..> it.univaq/gymportal/business/impl/UserServiceImpl
-it.univaq/gymportal/resources/rest/FavoriteRes ..> it.univaq/gymportal/business/impl/FavoriteGymServiceImpl
-it.univaq/gymportal/resources/rest/FavoriteRes ..> it.univaq/gymportal/business/impl/FavoriteCourseServiceImpl
-it.univaq/gymportal/resources/rest/FavoriteRes ..> it.univaq/gymportal/business/impl/UserServiceImpl
-it.univaq/gymportal/resources/rest/UserRes ..> it.univaq/gymportal/business/impl/UserServiceImpl
-it.univaq/gymportal/resources/rest/UserRes ..> it.univaq/gymportal/business/impl/FeedbackGymServiceImpl
-it.univaq/gymportal/resources/rest/UserRes ..> it.univaq/gymportal/business/impl/FeedbackCourseServiceImpl
+AuthRes ..> UserServiceImpl
+ymRes ..> GymServiceImpl
+GymRes ..> 	UserServiceImpl
+CourseRes ..> CourseServiceImpl
+CourseRes ..> UserServiceImpl
+CourseRes ..> GymServiceImpl
+FeedbackCourseRes ..> FeedbackCourseServiceImpl
+FeedbackCourseRes ..> UserServiceImpl
+FeedbackGymRes ..> FeedbackGymServiceImpl
+FeedbackGymRes ..> UserServiceImpl
+FavoriteRes ..> FavoriteGymServiceImpl
+FavoriteRes ..> FavoriteCourseServiceImpl
+FavoriteRes ..> UserServiceImpl
+UserRes ..> UserServiceImpl
+UserRes ..> FeedbackGymServiceImpl
+UserRes ..> FeedbackCourseServiceImpl
 
 ' Sub-resource factory relations
-it.univaq/gymportal/resources/rest/GymRes ..> it.univaq/gymportal/resources/rest/CourseRes
-it.univaq/gymportal/resources/rest/GymRes ..> it.univaq/gymportal/resources/rest/FeedbackGymRes
-it.univaq/gymportal/resources/rest/CourseRes ..> it.univaq/gymportal/resources/rest/FeedbackCourseRes
-it.univaq/gymportal/resources/rest/UserRes ..> it.univaq/gymportal/resources/rest/FavoriteRes
+GymRes ..> CourseRes
+GymRes ..> FeedbackGymRes
+CourseRes ..> FeedbackCourseRes
+UserRes ..> FavoriteRes
 
 '========================
 ' Model Aggregations
 '========================
-it.univaq/gymportal/model/Gym o-- "0..*" it.univaq/gymportal/model/Course
-it.univaq/gymportal/model/Gym o-- "0..*" it.univaq/gymportal/model/FeedbackGym
-it.univaq/gymportal/model/Gym o-- "0..*" it.univaq/gymportal/model/FavoriteGym
+Gym o-- "0..*" Course
+Gym o-- "0..*" FeedbackGym
+Gym o-- "0..*" FavoriteGym
 
-it.univaq/gymportal/model/Course o-- "0..*" it.univaq/gymportal/model/FeedbackCourse
-it.univaq/gymportal/model/Course o-- "0..*" it.univaq/gymportal/model/FavoriteCourse
+Course o-- "0..*" FeedbackCourse
+Course o-- "0..*" FavoriteCourse
 
-it.univaq/gymportal/model/User o-- "0..*" it.univaq/gymportal/model/FavoriteGym
-it.univaq/gymportal/model/User o-- "0..*" it.univaq/gymportal/model/FavoriteCourse
-it.univaq/gymportal/model/User o-- "0..*" it.univaq/gymportal/model/FeedbackGym
-it.univaq/gymportal/model/User o-- "0..*" it.univaq/gymportal/model/FeedbackCourse
-it.univaq/gymportal/model/User o-- "0..*" it.univaq/gymportal/model/Role
-it.univaq/gymportal/model/User o-- "0..*" it.univaq/gymportal/model/Gym
+User o-- "0..*" FavoriteGym
+User o-- "0..*" FavoriteCourse
+User o-- "0..*" FeedbackGym
+User o-- "0..*" FeedbackCourse
+User o-- "0..*" Role
+User o-- "0..*" Gym
 
 '========================
 ' Runner
