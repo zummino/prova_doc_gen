@@ -1,0 +1,338 @@
+@startuml 
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam ArrowColor #888888
+skinparam Shadowing false
+skinparam defaultFontName Monospace
+
+' External dependencies
+package "External Libraries / Tools" #EFEFEF {
+  component "scikit-learn\n(RandomForest, DecisionTree)" as EXT_SCIKIT
+  component "pyamosa\n(Optimizer, Config, StopCriterion)" as EXT_PYAMOSA
+  component "pyalslib\n(YosysHelper, ALS, utils)" as EXT_PYALSLIB
+  component "numpy / pandas / scipy / tqdm / joblib / jinja2 / anytree / matplotlib / tabulate / graphviz" as EXT_SCI_PY
+  component "File System\n(JSON5 configs, CSV datasets,\noutputs, VHDL sources)" as EXT_FS
+  component "git (GitPython)" as EXT_GIT
+  component "GHDL/Yosys toolchain" as EXT_SYNTH
+}
+
+' Resources (aux/testbench generator)
+package "resources" #FFFFFF {
+  package "vhd/tb/oracles_generator" {
+    component "tb_decision_box_fp.cc" as RES_TB_DBS_ORACLE
+  }
+}
+
+' Core model and domain
+package "src/Model" #FFFFFF {
+  component "Classifier.py" as M_Classifier
+  component "DecisionTree.py" as M_DecisionTree
+  component "DecisionBox.py" as M_DecisionBox
+  component "ErrorConfig.py" as M_ErrorConfig
+  component "FaultCollection.py" as M_FaultCollection
+  component "rank_based.py" as M_RankBased
+}
+
+' Parsing PMML/Joblib and context bootstrapping
+package "src/ConfigParsers" #FFFFFF {
+  component "ConfigParser.py" as CP_ConfigParser
+  component "DtGenConfigParser.py" as CP_DtGenConfigParser
+  component "OneStepConfigParser.py" as CP_OneStepConfigParser
+  component "PsConfigParser.py" as CP_PsConfigParser
+  component "TwoStepsConfigParser.py" as CP_TwoStepsConfigParser
+}
+
+' Flows: orchestration and high-level commands
+package "src/Flows" #FFFFFF {
+
+  package "GREP" {
+    component "GREP.py" as F_GREP
+    component "LossBasedGREP.py" as F_GREP_Loss
+    component "ResiliencyBasedGREP.py" as F_GREP_Res
+  }
+
+  package "GREPSK" {
+    component "GREPSK.py" as F_GREPSK
+    component "LossBasedGREPSK.py" as F_GREPSK_Loss
+    component "ResiliencyBasedGREPSK.py" as F_GREPSK_Res
+  }
+
+  package "LCOR" {
+    component "lcor.py" as F_LCOR
+    component "lcor_axc.py" as F_LCOR_AXC
+  }
+
+  package "PS" {
+    component "PsMop.py" as F_PS_Mop
+  }
+
+  package "TMR" {
+    component "tmr.py" as F_TMR
+    component "mr_axc.py" as F_TMR_AxC
+    component "mr_heu.py" as F_TMR_Heu
+    component "mr_moo.py" as F_TMR_Moo
+  }
+
+  package "EnsemblePruning" {
+    component "EnsemblePruner.py" as F_EnsemblePruner
+  }
+
+  component "als_flow.py" as F_als_flow
+  component "als_wc_flow.py" as F_als_wc_flow
+  component "combined_flow.py" as F_combined_flow
+  component "debug_flow.py" as F_debug_flow
+  component "faultinj_flow.py" as F_faultinj_flow
+  component "grep_flow.py" as F_grep_flow
+  component "lcor_flow.py" as F_lcor_flow
+  component "pruner_flow.py" as F_pruner_flow
+  component "ps_flow.py" as F_ps_flow
+  component "tmr_flow.py" as F_tmr_flow
+  component "visit_testing.py" as F_visit_testing
+}
+
+' HDL generation
+package "src/HDLGenerators" #FFFFFF {
+  component "HDLGenerator.py" as HDL_Base
+  component "GREPHdlGenerator.py" as HDL_GREP
+  component "PsHdlGenerator.py" as HDL_PS
+  component "SingleStepAlsHdlGenerator.py" as HDL_S1_ALS
+  component "SingleStepAlsWcHdlGenerator.py" as HDL_S1_ALS_WC
+  component "SingleStepFullHdlGenerator.py" as HDL_S1_FULL
+  component "TwoStepsAlsHdlGenerator.py" as HDL_S2_ALS
+  component "TwoStepsAlsWcHdlGenerator.py" as HDL_S2_ALS_WC
+  component "TwoStepsFullHdlGenerator.py" as HDL_S2_FULL
+  component "LutMapper.py" as HDL_LutMapper
+}
+
+' Multi-objective optimization problems
+package "src/Optimization" #FFFFFF {
+  component "BaseMop.py" as OPT_BaseMop
+  component "FirstStepAlsMop.py" as OPT_FirstStepAls
+  component "SecondStepAlsMop.py" as OPT_SecondStepAls
+  component "SecondStepAlsWcMop.py" as OPT_SecondStepAlsWc
+  component "SecondStepBaseMop.py" as OPT_SecondStepBase
+  component "SecondStepCombinedMop.py" as OPT_SecondStepCombined
+  component "SecondStepWcBaseMop.py" as OPT_SecondStepWcBase
+  component "SingleStepAlsMop.py" as OPT_SingleStepAls
+  component "SingleStepAlsWcMop.py" as OPT_SingleStepAlsWc
+  component "SingleStepCombinedMop.py" as OPT_SingleStepCombined
+}
+
+' scikit adapter
+package "src/scikit" #FFFFFF {
+  component "RandonForestClassifierMV.py" as SK_RF_MV
+}
+
+' Context and utilities
+package "src" #FFFFFF {
+  component "ctx_factory.py" as U_CTX
+  component "dtgen.py" as U_DTGEN
+  component "git_updater.py" as U_GIT
+  component "hdl_generation.py" as U_HDL_GEN
+  component "logger.py" as U_LOGGER
+  component "plot.py" as U_PLOT
+}
+
+' CLI script at repo root
+component "pruning.py" as CLI_PRUNING
+
+' -------------------------
+' Internal dependencies
+' -------------------------
+
+' Model internals
+M_Classifier --> M_DecisionTree
+M_DecisionTree --> M_DecisionBox
+M_FaultCollection --> M_Classifier
+M_RankBased --> M_Classifier
+
+' Config parsers
+CP_OneStepConfigParser --> CP_ConfigParser
+CP_PsConfigParser --> CP_ConfigParser
+CP_TwoStepsConfigParser --> CP_ConfigParser
+CP_DtGenConfigParser --> CP_ConfigParser
+
+CP_OneStepConfigParser --> M_ErrorConfig
+CP_PsConfigParser --> M_ErrorConfig
+CP_TwoStepsConfigParser --> M_ErrorConfig
+CP_PsConfigParser --> CP_DtGenConfigParser
+
+' Flows -> Core model
+F_GREP --> M_Classifier
+F_GREP_Loss --> F_GREP
+F_GREP_Res --> F_GREP
+
+F_GREPSK --> EXT_SCIKIT
+F_GREPSK_Loss --> F_GREPSK
+F_GREPSK_Res --> F_GREPSK
+
+F_LCOR --> F_GREP
+F_LCOR_AXC --> F_GREP
+
+F_PS_Mop --> M_Classifier
+
+F_TMR --> F_GREP
+F_TMR_AxC --> M_Classifier
+F_TMR_Heu --> F_TMR_AxC
+F_TMR_Moo --> F_TMR_AxC
+
+F_EnsemblePruner --> M_Classifier
+
+' Flow glue/orchestration
+F_als_flow --> CP_OneStepConfigParser
+F_als_flow --> CP_TwoStepsConfigParser
+F_als_flow --> M_Classifier
+F_als_wc_flow --> CP_OneStepConfigParser
+F_als_wc_flow --> CP_TwoStepsConfigParser
+F_combined_flow --> CP_OneStepConfigParser
+F_combined_flow --> CP_TwoStepsConfigParser
+
+F_debug_flow --> CP_PsConfigParser
+F_faultinj_flow --> CP_PsConfigParser
+F_faultinj_flow --> M_Classifier
+F_faultinj_flow --> M_FaultCollection
+
+F_grep_flow --> CP_PsConfigParser
+F_grep_flow --> F_GREP
+F_lcor_flow --> CP_PsConfigParser
+F_lcor_flow --> F_LCOR
+F_lcor_flow --> F_LCOR_AXC
+F_pruner_flow --> CP_PsConfigParser
+F_pruner_flow --> F_EnsemblePruner
+F_ps_flow --> CP_PsConfigParser
+F_ps_flow --> F_PS_Mop
+F_tmr_flow --> CP_PsConfigParser
+F_tmr_flow --> F_TMR
+F_tmr_flow --> F_TMR_AxC
+F_tmr_flow --> F_TMR_Heu
+F_tmr_flow --> F_TMR_Moo
+F_visit_testing --> CP_PsConfigParser
+F_visit_testing --> M_FaultCollection
+
+' HDL generators
+HDL_Base --> M_Classifier
+HDL_GREP --> HDL_Base
+HDL_GREP --> F_GREP
+HDL_PS --> HDL_Base
+HDL_S1_ALS --> HDL_Base
+HDL_S1_ALS_WC --> HDL_Base
+HDL_S1_FULL --> HDL_Base
+HDL_S2_ALS --> HDL_Base
+HDL_S2_ALS_WC --> HDL_Base
+HDL_S2_FULL --> HDL_Base
+HDL_LutMapper --> HDL_Base
+
+' Optimization problems
+OPT_BaseMop --> M_Classifier
+OPT_SingleStepAls --> OPT_BaseMop
+OPT_SingleStepAlsWc --> OPT_BaseMop
+OPT_SingleStepCombined --> OPT_BaseMop
+OPT_FirstStepAls --> M_DecisionTree
+OPT_SecondStepBase --> OPT_BaseMop
+OPT_SecondStepAls --> OPT_SecondStepBase
+OPT_SecondStepAlsWc --> OPT_SecondStepBase
+OPT_SecondStepWcBase --> OPT_BaseMop
+OPT_SecondStepCombined --> OPT_SecondStepBase
+
+' scikit adapter usage
+M_Classifier --> SK_RF_MV
+
+' Context / utilities
+U_CTX --> CP_PsConfigParser
+U_CTX --> M_Classifier
+U_CTX --> F_PS_Mop
+U_HDL_GEN --> HDL_Base
+U_HDL_GEN --> HDL_GREP
+U_HDL_GEN --> HDL_PS
+U_HDL_GEN --> U_CTX
+U_DTGEN --> CP_DtGenConfigParser
+U_DTGEN --> SK_RF_MV
+U_DTGEN --> M_Classifier
+U_PLOT <- F_GREP
+U_PLOT <- F_GREPSK
+U_LOGGER <- U_CTX
+
+' CLI
+CLI_PRUNING --> F_GREPSK
+CLI_PRUNING --> EXT_FS
+
+' -------------------------
+' External dependencies
+' -------------------------
+
+' Model parsing and data handling
+M_Classifier --> EXT_SCIKIT
+M_Classifier --> EXT_SCI_PY
+M_Classifier --> EXT_FS
+
+' Config parsers use JSON5 and configs
+CP_ConfigParser --> EXT_FS
+CP_DtGenConfigParser --> EXT_FS
+CP_OneStepConfigParser --> EXT_PYAMOSA
+CP_PsConfigParser --> EXT_PYAMOSA
+CP_TwoStepsConfigParser --> EXT_PYAMOSA
+
+' Flows use scientific stack and filesystem
+F_* as dummyFlows
+F_GREP --> EXT_SCI_PY
+F_GREPSK --> EXT_SCI_PY
+F_LCOR --> EXT_SCI_PY
+F_LCOR_AXC --> EXT_SCI_PY
+F_TMR --> EXT_SCI_PY
+F_TMR_AxC --> EXT_SCI_PY
+F_TMR_Heu --> EXT_SCI_PY
+F_TMR_Moo --> EXT_PYAMOSA
+F_PS_Mop --> EXT_PYAMOSA
+F_ps_flow --> EXT_PYAMOSA
+F_grep_flow --> EXT_FS
+F_lcor_flow --> EXT_FS
+F_pruner_flow --> EXT_FS
+F_tmr_flow --> EXT_FS
+F_faultinj_flow --> EXT_FS
+
+' HDL generation uses pyalslib (Yosys/GHDL)
+HDL_Base --> EXT_PYALSLIB
+HDL_GREP --> EXT_PYALSLIB
+HDL_PS --> EXT_PYALSLIB
+HDL_S1_ALS --> EXT_PYALSLIB
+HDL_S1_ALS_WC --> EXT_PYALSLIB
+HDL_S1_FULL --> EXT_PYALSLIB
+HDL_S2_ALS --> EXT_PYALSLIB
+HDL_S2_ALS_WC --> EXT_PYALSLIB
+HDL_S2_FULL --> EXT_PYALSLIB
+HDL_LutMapper --> EXT_SCI_PY
+HDL_Base --> EXT_FS
+HDL_GREP --> EXT_FS
+HDL_PS --> EXT_FS
+
+' Optimization uses pyamosa
+OPT_* as dummyOpt
+OPT_BaseMop --> EXT_PYAMOSA
+OPT_SingleStepAls --> EXT_PYAMOSA
+OPT_SingleStepAlsWc --> EXT_PYAMOSA
+OPT_SingleStepCombined --> EXT_PYAMOSA
+OPT_FirstStepAls --> EXT_PYAMOSA
+OPT_SecondStepBase --> EXT_PYAMOSA
+OPT_SecondStepAls --> EXT_PYAMOSA
+OPT_SecondStepAlsWc --> EXT_PYAMOSA
+OPT_SecondStepWcBase --> EXT_PYAMOSA
+OPT_SecondStepCombined --> EXT_PYAMOSA
+
+' Utilities
+U_GIT --> EXT_GIT
+U_CTX --> EXT_PYALSLIB
+U_CTX --> EXT_PYAMOSA
+U_CTX --> EXT_FS
+U_DTGEN --> EXT_SCIKIT
+U_DTGEN --> EXT_SCI_PY
+U_DTGEN --> EXT_FS
+U_HDL_GEN --> EXT_FS
+U_LOGGER --> EXT_FS
+U_PLOT --> EXT_SCI_PY
+
+' Resources / toolchain
+RES_TB_DBS_ORACLE --> EXT_FS
+EXT_PYALSLIB --> EXT_SYNTH
+
+@enduml

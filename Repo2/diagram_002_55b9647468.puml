@@ -1,0 +1,491 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+' External dependencies (libraries/types referenced by the codebase)
+class "pyamosa.Problem" <<external>>
+class "pyamosa.Optimizer" <<external>>
+class "pyamosa.Config" <<external>>
+class "pyalslib.YosysHelper" as YosysHelper <<external>>
+class "pyalslib.ALSConfig" as ALSConfig <<external>>
+class "pyalslib.ALSGraph" as ALSGraph <<external>>
+class "pyalslib.ALSCatalog" as ALSCatalog <<external>>
+class "sklearn.ensemble.RandomForestClassifier" as SKRF <<external>>
+
+package "ConfigParsers" {
+  class ConfigParser {
+    - configuration
+    + __init__(configfile: str)
+  }
+  class DtGenConfigParser {
+    + separator
+    + outcome_col
+    + skip_header
+    + attributes_name
+    + classes_name
+    + separated_training
+    + separated_hyperparametrization
+  }
+  class OneStepConfigParser {
+    + pmml
+    + outdir
+    + error_conf
+    + als_conf
+    + optimizer_conf
+    + termination_criterion
+  }
+  class PSConfigParser {
+    + model_source
+    + outdir
+    + error_conf
+    + als_conf
+    + train_dataset
+    + optimizer_conf
+    + variable_grouping_strategy
+    + transfer_strategy_objectives
+    + transfer_strategy_variables
+    + termination_criterion
+  }
+  class TwoStepsConfigParser {
+    + pmml
+    + outdir
+    + error_conf
+    + als_conf
+    + fst_optimizer_conf
+    + fst_termination_criterion
+    + snd_optimizer_conf
+    + snd_termination_criterion
+  }
+
+  ConfigParser <|-- DtGenConfigParser
+  ConfigParser <|-- OneStepConfigParser
+  ConfigParser <|-- PSConfigParser
+  ConfigParser <|-- TwoStepsConfigParser
+
+  ' Dependencies to model and external configs
+  OneStepConfigParser ..> "ErrorConfig"
+  OneStepConfigParser ..> ALSConfig
+  OneStepConfigParser ..> "pyamosa.Config"
+  OneStepConfigParser ..> "pyamosa.Problem" : termination_criterion uses
+  PSConfigParser ..> "ErrorConfig"
+  PSConfigParser ..> DtGenConfigParser
+  PSConfigParser ..> ALSConfig
+  PSConfigParser ..> "pyamosa.Config"
+  TwoStepsConfigParser ..> "ErrorConfig"
+  TwoStepsConfigParser ..> ALSConfig
+  TwoStepsConfigParser ..> "pyamosa.Config"
+}
+
+package "Model" {
+  class Classifier {
+    + trees : list[DecisionTree]
+    + model_features
+    + model_classes
+    + classes_name
+    + x_test, y_test
+    + x_train, y_train
+    + parse(...)
+    + pmml_parser(...)
+    + joblib_parser(...)
+    + read_test_set(...)
+    + read_training_set(...)
+    + predict(...)
+    + evaluate_test_dataset()
+    + evaluate_accuracy(...)
+    + compute_leaves_idx(...)
+    + get_votes_vectors_by_leaves_idx(...)
+    + get_leaves_costs_by_leaves_idx(...)
+    + get_class_labels_by_leaves_idx(...)
+    + get_accuracy_from_labels(...)
+    + get_accuracy_by_leaves_idx(...)
+    + transform_leaves_into_classess(...)
+    + transform_assertion_into_directions(...)
+    + prune_trees(...)
+    + inject_tree_boxes_faults_fb(...)
+    + inject_bns_faults(...)
+    + restore_dbs(...)
+    + restore_bns(...)
+    + store_bns()
+    + set_nabs(...)
+    + reset_nabs_configuration()
+    + reset_assertion_configuration()
+    + brace4ALS(...)
+    + get_als_cells_per_tree()
+    + get_als_dv_upper_bound()
+    + get_current_required_aig_nodes()
+    + get_total_retained()
+  }
+
+  class DecisionTree {
+    + name
+    + decision_boxes : list[DecisionBox]
+    + leaves
+    + boolean_networks
+    + class_assertions
+    + visit(x)
+    + visit_by_leaf_idx(list)
+    + visit_by_leaves(list)
+    + get_boxes_output(x)
+    + get_leaves_idx_by_class(...)
+    + get_leaves_idx_not_in_class(...)
+    + define_boolean_expression(...)
+    + get_boolean_net(...)
+    + get_db_from_name(...)
+    + replace_db_with_fb(...)
+    + restore_db(...)
+    + inj_fault_assertion_functions(...)
+    + inj_fault_assertion_functions_ws(...)
+    + get_bns_functions()
+    + set_box_data_type(...)
+    + set_end_start_sample(...)
+  }
+
+  class DecisionBox {
+    + name
+    + feature_name
+    + data_type
+    + operator
+    + threshold
+    + nab
+    + compare(input) : bool
+    + get_struct() : dict
+    + get_str_op() : str
+  }
+
+  enum "DecisionBox.CompOperator" as CompOperator {
+    lessThan
+    equal
+    greaterThan
+  }
+
+  class FaultedBox {
+    + name
+    + feature_name
+    + data_type
+    + fixed_value
+    + compare(input) : bool
+  }
+
+  class ErrorConfig {
+    + test_dataset
+    + max_loss_perc
+    + dataset_description
+  }
+
+  class FaultCollection {
+    + list_of_fault_sites
+    + list_of_feature_fault_sites
+    + list_of_db_fault_sites
+    + list_of_bn_fault_sites
+    + sample_faults(...)
+    + faults_to_json5(...)
+    + faults_to_json5_list(...)
+  }
+
+  Classifier *-- "1..*" DecisionTree
+  DecisionTree *-- "0..*" DecisionBox
+  DecisionBox o-- CompOperator
+  DecisionTree ..> FaultedBox : replaces DB on FI
+  FaultCollection ..> Classifier : reads model structure
+}
+
+package "HDLGenerators" {
+  class HDLGenerator {
+    + classifier : Classifier
+    + yshelper : YosysHelper
+    + destination : str
+    + get_resource_usage()
+    + get_dyn_energy()
+    + generate_exact_implementation(...)
+    + implement_decision_boxes(...)
+    + implement_assertions(...)
+    + generate_classifier(...)
+    + generate_rejection_module(...)
+    + generate_majority_voter(...)
+    + generate_tcl(...)
+    + generate_exact_tb(...)
+    + generate_cmakelists(...)
+    + set_comp_type(...)
+  }
+  class GREPHdlGenerator {
+    + generate_axhdl(pruning_configuration, ...)
+  }
+  class PsHdlGenerator {
+    + pareto_path
+    + generate_axhdl(pareto_set, ...)
+    + get_resource_usage_custom()
+    + generate_ax_tb(...)
+  }
+  class SingleStepAlsHdlGenerator {
+    + generate_axhdl(configurations, ...)
+  }
+  class SingleStepAlsWcHdlGenerator {
+    + generate_axhdl(configurations, ...)
+  }
+  class SingleStepFullHdlGenerator {
+    + generate_axhdl(configurations, ...)
+  }
+  class TwoStepsAlsHdlGenerator {
+    + generate_axhdl(configurations, inner_configuration, ...)
+  }
+  class TwoStepsAlsWcHdlGenerator {
+    + generate_axhdl(outer_configurations, inner_configuration, ...)
+  }
+  class TwoStepsFullHdlGenerator {
+    + generate_axhdl(outer_configurations, inner_configuration, ...)
+  }
+  class LutMapper {
+    + k : int
+    + map(minterms, signal_name) : list
+    + split_minterm(literals, lut_tech) : list
+  }
+
+  HDLGenerator <|-- GREPHdlGenerator
+  HDLGenerator <|-- PsHdlGenerator
+  HDLGenerator <|-- SingleStepAlsHdlGenerator
+  HDLGenerator <|-- SingleStepAlsWcHdlGenerator
+  HDLGenerator <|-- SingleStepFullHdlGenerator
+  HDLGenerator <|-- TwoStepsAlsHdlGenerator
+  HDLGenerator <|-- TwoStepsAlsWcHdlGenerator
+  HDLGenerator <|-- TwoStepsFullHdlGenerator
+
+  HDLGenerator ..> Classifier
+  HDLGenerator ..> YosysHelper
+  HDLGenerator ..> LutMapper
+  GREPHdlGenerator ..> "Flows.GREP.GREP" : set_pruning_conf()
+}
+
+package "Flows.GREP" {
+  class GREP {
+    + classifier : Classifier
+    + pruning_set_fraction : float
+    + max_loss : float
+    + min_resiliency : int
+    + ncpus : int
+    + trim(cost_criterion)
+    + set_pruning_conf(classifier, pruning_conf)
+    + set_pruning(tree, pruning_configuration, ...)
+    + evaluate_accuracy()
+    + evaluate_accuracy_draw()
+    + split_test_dataset(...)
+    + evaluate_redundancy()
+    + sort_leaves_by_cost(...)
+    + get_cost()
+    + compare()
+    --
+    class CostCriterion {
+      + depth
+      + activity
+      + combined
+    }
+  }
+  class LossBasedGREP {
+    + trim(cost_criterion)
+  }
+  class ResiliencyBasedGREP {
+    + trim(cost_criterion)
+    + update_redundancy(samples)
+  }
+
+  GREP <|-- LossBasedGREP
+  GREP <|-- ResiliencyBasedGREP
+  GREP ..> Classifier
+  GREP ..> DecisionTree
+}
+
+package "Flows.GREPSK" {
+  class GREPSK {
+    + classifier : SKRF
+    + pruning_set_fraction : float
+    + ncpus : int
+    + evaluate_error_resiliency()
+    + update_error_resiliency(...)
+    + get_best_leaf(...)
+    + sort_leaves_by_cost(...)
+    + get_cost()
+    --
+    class CostCriterion {
+      + depth
+      + activity
+      + combined
+      + crit_to_str(...)
+    }
+  }
+  class LossBasedGREPSK {
+    + split_pruning_validation_set(...)
+    + trim_fixed(cost_criterion)
+    + trim_alternative(cost_criterion)
+    + dump_report(path)
+  }
+  class ResiliencyBasedGREPSK {
+    + split_pruning_validation_set(...)
+    + trim(cost_criterion)
+    + dump_report(path)
+  }
+
+  GREPSK <|-- LossBasedGREPSK
+  GREPSK <|-- ResiliencyBasedGREPSK
+  GREPSK ..> SKRF
+}
+
+package "Flows.LCOR" {
+  class LCOR {
+    + leaf_scores
+    + corr_per_leaf
+    + trim(report, report_path)
+    + trim_alternative(report, loss_lb, loss_ub, step)
+    + samples_per_leaves(...)
+    + compute_leaves_correlation(...)
+    + compute_leaves_score(...)
+    + init_leaves_scores()
+    + predispose_trim()
+  }
+  class LCOR_AXC {
+    + leaf_scores
+    + corr_per_leaf
+    + pruning_path
+    + report_path
+    + trim()
+    + predispose_trim()
+    + inner_trim(report_path)
+    + init_leaves_scores()
+  }
+
+  "Flows.GREP.GREP" <|-- LCOR
+  "Flows.GREP.GREP" <|-- LCOR_AXC
+  LCOR ..> Classifier
+  LCOR_AXC ..> Classifier
+}
+
+package "Flows.TMR" {
+  class MrAxC {
+    + classifier : Classifier
+    + sample_dse_samples(...)
+    + compute_leaves_costs()
+    + initialize_tree_prediction_per_sample()
+    + mr_predict(...)
+    + tune_thds(...)
+    + dump_cfg(...)
+    + dump_mop_val_indexes(...)
+  }
+  class MrHeu {
+    + heu_tree_acc()
+    + heu_tree_acc_2()
+    + do_full_ranking_accuracy()
+    + do_full_ranking_margin()
+    + initialize_problem(mr_axc)
+  }
+  class MrMop {
+    + initialize_problem(mr_axc)
+    + evaluate(x, out)
+  }
+  class TMR {
+    + approx(report=True, ...)
+    + get_pruning_set_classes()
+    + visit_tmr_draw_multicore()
+    + calculate_class_metrics(...)
+  }
+
+  MrAxC ..> Classifier
+  MrHeu ..> MrAxC
+  TMR ..|> "Flows.GREP.GREP"
+  TMR ..> Classifier
+  MrMop ..|> "pyamosa.Problem"
+  MrMop ..> MrAxC
+}
+
+package "Flows.PS" {
+  class PsMop {
+    + classifier : Classifier
+    + evaluate(x, out)
+    + archived_actual_accuracy(archive)
+  }
+  class RankBasedPsMop {
+    + classifier : Classifier
+    + evaluate(x, out)
+    + archived_actual_accuracy(archive)
+  }
+
+  PsMop ..|> "pyamosa.Problem"
+  RankBasedPsMop ..|> "pyamosa.Problem"
+  PsMop ..> Classifier
+  RankBasedPsMop ..> Classifier
+}
+
+package "Optimization" {
+  class BaseMop {
+    + classifier : Classifier
+    + baseline_accuracy
+  }
+  class FirstStepAlsMop {
+    + evaluate(x, out)
+  }
+  class SecondStepBaseMop {
+    + error_conf
+    + opt_conf
+  }
+  class SecondStepAlsMop {
+    + evaluate(x, out)
+  }
+  class SecondStepWcBaseMop {
+    + error_conf
+  }
+  class SecondStepAlsWcMop {
+    + evaluate(x, out)
+  }
+  class SecondStepCombinedMop {
+    + evaluate(x, out)
+  }
+  class SingleStepAlsMop {
+    + evaluate(x, out)
+  }
+  class SingleStepAlsWcMop {
+    + evaluate(x, out)
+  }
+  class SingleStepCombinedMop {
+    + evaluate(x, out)
+  }
+
+  BaseMop ..> Classifier
+
+  FirstStepAlsMop ..|> "pyamosa.Problem"
+  SecondStepAlsMop ..|> "pyamosa.Problem"
+  SecondStepAlsWcMop ..|> "pyamosa.Problem"
+  SecondStepCombinedMop ..|> "pyamosa.Problem"
+  SingleStepAlsMop ..|> "pyamosa.Problem"
+  SingleStepAlsWcMop ..|> "pyamosa.Problem"
+  SingleStepCombinedMop ..|> "pyamosa.Problem"
+
+  SecondStepBaseMop <|-- SecondStepAlsMop
+  SecondStepBaseMop <|-- SecondStepCombinedMop
+  SecondStepWcBaseMop <|-- SecondStepAlsWcMop
+
+  BaseMop <|-- SecondStepBaseMop
+  BaseMop <|-- SecondStepWcBaseMop
+  BaseMop <|-- SingleStepAlsMop
+  BaseMop <|-- SingleStepAlsWcMop
+  BaseMop <|-- SingleStepCombinedMop
+}
+
+package "scikit" {
+  class RandomForestClassifierMV {
+    + predict_proba(X)
+    + fake()
+  }
+  RandomForestClassifierMV ..|> SKRF
+}
+
+package "Logging" {
+  class CustomFormatter {
+    + format(record)
+  }
+}
+
+' Cross-package key associations
+"Flows.GREP.GREP" ..> "Model.ErrorConfig" : uses thresholds/cfg via flows
+"ConfigParsers.PSConfigParser" ..> "pyamosa.Config"
+"ConfigParsers.OneStepConfigParser" ..> "pyamosa.Config"
+"ConfigParsers.TwoStepsConfigParser" ..> "pyamosa.Config"
+
+@enduml

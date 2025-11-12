@@ -1,0 +1,178 @@
+@startuml
+
+left to right direction
+skinparam usecase {
+  BackgroundColor #FDFDFD
+  BorderColor #333333
+}
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #666666
+}
+
+actor Operator as op
+actor "PyAMOSA Optimizer" as amosa
+actor "scikit-learn/Joblib" as skl
+actor "Yosys/GHDL" as yosys
+actor "Git Server" as git
+actor "File System" as fs
+
+rectangle "pyALS-RF Toolkit" as system {
+  package "Precision Scaling (src/Flows/ps_flow.py)" {
+    usecase "ps_flow()" as uc_ps_flow
+    usecase "ps_eval()" as uc_ps_eval
+    usecase "ps_distance()" as uc_ps_distance
+    usecase "ps_compare()" as uc_ps_compare
+    usecase "compute_gini_dist()" as uc_ps_gini
+  }
+
+  package "Pruning (src/Flows/grep_flow.py, lcor_flow.py, pruner_flow.py)" {
+    usecase "grep_flow()" as uc_grep
+    usecase "redundancy_plot()" as uc_grep_plot
+    usecase "pruning_into_directions()" as uc_grep_dir
+    usecase "leaves_correlation_flow()" as uc_lcor
+    usecase "leaves_correlation_flow_2()" as uc_lcor2
+    usecase "ensemble_pruning_flow()" as uc_ens_prune
+  }
+
+  package "GREPSK (pruning.py)" {
+    usecase "run_loss_based_grep()" as uc_grepsk_loss
+    usecase "run_redundancy_based_grep()" as uc_grepsk_res
+  }
+
+  package "Modular Redundancy (src/Flows/tmr_flow.py)" {
+    usecase "tmr_flow()" as uc_tmr
+    usecase "mr_heu_flow()" as uc_mr_heu
+    usecase "mr_mop_flow()" as uc_mr_mop
+    usecase "mr_additional_eval()" as uc_mr_eval
+  }
+
+  package "ALS/Combined Flows (src/Flows/als_*.py, combined_flow.py)" {
+    usecase "als_one_step()" as uc_als1
+    usecase "als_two_steps()" as uc_als2
+    usecase "als_wc_one_step()" as uc_wc1
+    usecase "als_wc_two_steps()" as uc_wc2
+    usecase "full_one_step()" as uc_full1
+    usecase "full_two_steps()" as uc_full2
+  }
+
+  package "HDL & Reports (src/hdl_generation.py)" {
+    usecase "hdl_generation()" as uc_hdl_gen
+    usecase "hdl_resource_usage()" as uc_hdl_ru
+    usecase "dyn_energy_estimation()" as uc_hdl_en
+  }
+
+  package "Debugging (src/Flows/debug_flow.py, visit_testing.py)" {
+    usecase "debug_with_scikit()" as uc_dbg_skl
+    usecase "hdl_debug_flow()" as uc_dbg_hdl
+    usecase "print_model()" as uc_dbg_print
+    usecase "visit_test()" as uc_visit_test
+    usecase "test_classifier_from_indexes()" as uc_test_idx
+    usecase "perclass_margin()" as uc_margin
+  }
+
+  package "Fault Injection (src/Flows/faultinj_flow.py)" {
+    usecase "gen_fault_collection()" as uc_fi_gen
+    usecase "fault_visit()" as uc_fi_visit
+    usecase "dump_unfaulted_class_vector()" as uc_fi_dump
+    usecase "test_bns_faulted_inference()" as uc_fi_bns
+    usecase "test_dbs_faulted_inference()" as uc_fi_dbs
+    usecase "sample_test_set()" as uc_fi_sample
+    usecase "gen_fault_coll_ps()" as uc_fi_ps
+    usecase "ps_faultinj_visit()" as uc_fi_psvisit
+  }
+
+  package "Dataset/Model (src/dtgen.py)" {
+    usecase "training_with_parameter_tuning()" as uc_train
+    usecase "dtgen()" as uc_dtgen
+  }
+
+  package "Utilities" {
+    usecase "git_updater()" as uc_git
+  }
+}
+
+' Operator to system use cases
+op --> uc_ps_flow
+op --> uc_ps_eval
+op --> uc_ps_distance
+op --> uc_ps_compare
+op --> uc_ps_gini
+
+op --> uc_grep
+op --> uc_grep_plot
+op --> uc_grep_dir
+op --> uc_lcor
+op --> uc_lcor2
+op --> uc_ens_prune
+
+op --> uc_grepsk_loss
+op --> uc_grepsk_res
+
+op --> uc_tmr
+op --> uc_mr_heu
+op --> uc_mr_mop
+op --> uc_mr_eval
+
+op --> uc_als1
+op --> uc_als2
+op --> uc_wc1
+op --> uc_wc2
+op --> uc_full1
+op --> uc_full2
+
+op --> uc_hdl_gen
+op --> uc_hdl_ru
+op --> uc_hdl_en
+
+op --> uc_dbg_skl
+op --> uc_dbg_hdl
+op --> uc_dbg_print
+op --> uc_visit_test
+op --> uc_test_idx
+op --> uc_margin
+
+op --> uc_fi_gen
+op --> uc_fi_visit
+op --> uc_fi_dump
+op --> uc_fi_bns
+op --> uc_fi_dbs
+op --> uc_fi_sample
+op --> uc_fi_ps
+op --> uc_fi_psvisit
+
+op --> uc_train
+op --> uc_dtgen
+
+op --> uc_git
+
+' External tools/libraries to related use cases
+amosa --> uc_ps_flow
+amosa --> uc_ps_compare
+amosa --> uc_mr_mop
+amosa --> uc_als1
+amosa --> uc_als2
+amosa --> uc_wc1
+amosa --> uc_wc2
+amosa --> uc_full1
+amosa --> uc_full2
+
+skl --> uc_dbg_skl
+skl --> uc_dtgen
+skl --> uc_grepsk_loss
+skl --> uc_grepsk_res
+
+yosys --> uc_hdl_gen
+yosys --> uc_hdl_ru
+yosys --> uc_hdl_en
+
+' File system participation (configuration, datasets, outputs)
+fs ..> uc_ps_flow
+fs ..> uc_grep
+fs ..> uc_hdl_gen
+fs ..> uc_fi_gen
+fs ..> uc_train
+fs ..> uc_git
+
+git --> uc_git
+@enduml

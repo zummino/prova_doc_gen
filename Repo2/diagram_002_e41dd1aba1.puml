@@ -1,0 +1,115 @@
+@startuml
+
+' Nodes on the same host
+node "Host OS" as host {
+  node "Python 3.x Runtime\n(pyALS-RF CLI/Flows)" as app <<process>> {
+    component "Flows (src/Flows/...)" as flows <<module>>
+    component "Model (src/Model/...)" as model <<module>>
+    component "HDL Generators (src/HDLGenerators/...)" as hdlgen <<module>>
+    component "Optimization (src/Optimization/...)" as opt <<module>>
+    component "Config Parsers (src/ConfigParsers/...)" as cfg <<module>>
+    component "ctx_factory.py" as ctx <<module>>
+    component "plot.py" as plot <<module>>
+    component "pruning.py" as pruning_cli <<cli>>
+  }
+
+  node "Multiprocessing Pool" as mp <<process>> {
+    component "Worker Process 1..N" as workers
+  }
+
+  node "ThreadPoolExecutor" as tpe <<process>> {
+    component "Worker Threads" as threads
+  }
+
+  ' External native tools on the same host (spawned via pyalslib)
+  node "EDA Toolchain" as eda <<external>> {
+    component "Yosys" as yosys <<tool>>
+    component "GHDL" as ghdl <<tool>>
+  }
+
+  ' Python libraries (in-process)
+  component "scikit-learn" as skl <<library>>
+  component "pyamosa" as amosa <<library>>
+  component "pyalslib" as alslib <<library>>
+  component "nyoka" as nyoka <<library>>
+  component "graphviz" as graphviz <<tool>>
+  component "joblib" as joblib <<library>>
+  component "pandas/numpy" as pynn <<library>>
+  component "tqdm/json5/tabulate" as misc <<library>>
+  component "anytree/pyeda" as logiclibs <<library>>
+
+  ' Storage (artifacts on the local FS)
+  folder "Local File System" as fs {
+    artifact "PMML (.pmml) or\nscikit model (.joblib)" as model_art <<artifact>>
+    artifact "Datasets (.csv)" as data_art <<artifact>>
+    artifact "JSON5 configs,\nreports (.csv/.pdf/.json5)" as reports_art <<artifact>>
+    artifact "Generated HDL (VHDL),\nTCL/CMake/Shell scripts" as hdl_art <<artifact>>
+    folder "resources/vhd/*, cmake/, sh/, tcl/" as resdir
+  }
+
+  ' Relationships inside the host
+  app -down-> flows
+  app -down-> model
+  app -down-> hdlgen
+  app -down-> opt
+  app -down-> cfg
+  app -down-> ctx
+  app -down-> plot
+  app -down-> pruning_cli
+
+  ' Parallelism
+  app ..> mp : multiprocessing.Pool\ncompute_score/visits
+  app ..> tpe : ThreadPoolExecutor\nBNS evaluation
+
+  ' ML/Optimization libraries
+  flows ..> skl : train/predict (RandomForestClassifier/DecisionTree)
+  flows ..> joblib : load/save\nmodels
+  flows ..> pynn
+  flows ..> misc
+  flows ..> logiclibs
+  opt ..> amosa : optimization\n(Problem/Optimizer)
+  model ..> pynn
+  model ..> misc
+  model ..> logiclibs
+
+  ' HDL generation and EDA
+  hdlgen ..> alslib : YosysHelper\n(file-based calls)
+  alslib ..> yosys
+  alslib ..> ghdl
+
+  ' Visualization / export
+  flows ..> nyoka : PMML export\n(dtgen)
+  flows ..> graphviz : tree exports\n(dtgen)
+
+  ' File system I/O
+  app --> fs
+  flows ..> model_art : read/write
+  flows ..> data_art : read
+  flows ..> reports_art : write
+  hdlgen ..> resdir : read templates
+  hdlgen ..> hdl_art : write HDL/TCL/CMake/Shell
+
+  ' Notes for clarity
+  note right of hdlgen
+    HDLGenerators:
+      - HDLGenerator, GREPHdlGenerator
+      - PsHdlGenerator, SingleStep/TwoSteps*
+    Copy/instantiate templates from resources/
+    Produce VHDL, TCL, CMake and scripts into outdir
+  end note
+
+  note bottom of flows
+    Flows include:
+      - GREP (Loss/Resiliency), GREPSK
+      - TMR (heuristics/MOO), LCOR/AXC
+      - PS (precision scaling)
+      - HDL generation orchestrations
+  end note
+
+  note bottom of app
+    Entry points are invoked as CLI
+    or via ctx_factory-based orchestration.
+    No network services; single-host only.
+  end note
+}
+@enduml
