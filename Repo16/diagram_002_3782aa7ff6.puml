@@ -1,0 +1,145 @@
+@startuml
+
+' Styling
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultTextAlignment left
+
+' External systems
+cloud "FIWARE IoT Agent (JSON)" as IOTA
+cloud "Orion-LD Context Broker" as ORION
+cloud "QuantumLeap (NGSI-LD sink)" as QL
+database "TimescaleDB (quantumleap)" as TS
+database "MongoDB (orion-openiot.entities)" as MONGO
+node "SUMO Engine (libtraci)" as SUMO
+node "SUMO Tools\n(randomTrips.py, routeSampler.py, mapDetectors.py)" as SUMO_TOOLS
+rectangle "Grafana (Dashboards)" as GRAFANA
+
+' Integration and core components
+package "Integration Layer" {
+  component "Agent\n(libraries/classes/Agent.py)" as AgentC
+  component "Broker\n(libraries/classes/Broker.py)" as BrokerC
+  component "DigitalShadowManager\n(libraries/classes/DigitalShadowManager.py)" as DSM
+  component "SubscriptionManager\nQuantumLeapManager\n(libraries/classes/SubscriptionManager.py)" as QLM
+}
+
+' Data and utilities
+package "Data & Utils" {
+  component "DataManager\n(libraries/classes/DataManager.py)" as DM
+  component "TimescaleManager\n(libraries/classes/DataManager.py)" as TSM
+  component "MongoDBManager\n(libraries/classes/DataManager.py)" as MDBM
+  component "generalUtils / preprocessingUtils / statisticUtils\n(libraries/utils/*.py)" as UTILS
+  component "constants\n(libraries/constants.py)" as CONST
+}
+
+' Simulation core
+package "Digital Twin Simulation" {
+  component "DigitalTwinManager\n(libraries/classes/DigitalTwinManager.py)" as DTM
+  component "Planner\n+ ScenarioGenerator\n(libraries/classes/Planner.py)" as PLNR
+  component "SumoSimulator\n(libraries/classes/SumoSimulator.py)" as SIM
+  component "TrafficModeler\n(libraries/classes/TrafficModeler.py)" as TM
+}
+
+' Mobility virtual environment (physical emulator)
+package "Mobility Virtual Environment" {
+  component "MobilityVirtualEnvironment\n(mobilityvenv/MobilityVirtualEnvironment.py)" as MVE
+  component "PhysicalSystemConnector\n(mobilityvenv/PhysicalSystemConnector.py)" as PSC
+  component "Sensor / Device\n(mobilityvenv/PhysicalSystemConnector.py)" as SNS
+}
+
+' Web UI / Backend
+package "Web UI / Backend (Django)" {
+  component "Views\n(udtBackEnd/udtApp/views.py)" as VIEWS
+  component "Models\n(udtBackEnd/udtApp/models.py)" as MODELS
+  component "Forms\n(udtBackEnd/udtApp/forms.py)" as FORMS
+  component "Templates & Filters\n(udtBackEnd/udtApp/templates,\n templatetags/custom_filters.py)" as TEMPLATES
+}
+
+' CLI Orchestrator
+component "TerminalSystem (CLI)\n(main.py)" as CLI
+
+' Component relationships (derived from code)
+' Mobility env -> Agent
+MVE -down-> PSC
+PSC -down-> SNS
+MVE --> AgentC : registration + data sending\n(Agent.serviceGroupRegistration,\nAgent.measurementRegistration,\nAgent.measurementSending)
+UTILS .. MVE : readingFiles(), processingTlData()
+
+' Agent <-> IoT Agent + CB
+AgentC --> IOTA : HTTP /iot/services, /iot/devices\nHTTP /iot/json (south)
+AgentC --> BrokerC : updateContext()
+
+' Broker <-> Orion + Shadow
+BrokerC --> ORION : ngsildclient (create/update/query)
+BrokerC --> DSM : searchShadow(), addShadow()
+DSM ..> UTILS : CSV read/write (digital shadows)
+
+' Subscriptions to QuantumLeap
+QLM --> ORION : Create NGSI-LD Subscriptions
+ORION --> QL : Notify /v2/notify
+
+' QuantumLeap storage
+QL --> TS : persist NGSI-LD time-series
+
+' Data access for simulation
+DM -down-> TSM
+VIEWS --> DTM : configureCalibrateAndRun()
+VIEWS --> FORMS
+VIEWS --> MODELS : Mongo Device (mongoengine)
+VIEWS --> TEMPLATES
+VIEWS --> UTILS : loadEnvVar(), filesystem access
+MODELS --> MONGO : collection 'entities'
+
+' Simulation orchestration
+DTM -down-> PLNR
+DTM -down-> SIM
+DTM -down-> TM
+PLNR -down-> SIM
+PLNR --> SUMO_TOOLS : randomTrips.py, routeSampler.py
+TM --> SUMO_TOOLS : network read (sumolib), XML/CSV I/O
+SIM --> SUMO : libtraci runtime
+
+' Preprocessing utilities
+UTILS --> SUMO_TOOLS : detector/mapDetectors.py
+UTILS ..> CONST : file paths, SUMO paths
+
+' CLI orchestrator wiring
+CLI --> AgentC
+CLI --> BrokerC
+CLI --> QLM
+CLI --> DM
+CLI --> TSM
+CLI --> DTM
+CLI --> PLNR
+CLI --> SIM
+CLI --> UTILS
+CLI ..> CONST
+
+' Grafana dashboards (referenced in templates)
+GRAFANA ..> TS : query visualization (dashboards)
+TEMPLATES ..> GRAFANA : iframe references
+
+' Notes for clarity
+note right of AgentC
+  libraries/classes/Agent.py
+  - Registers service groups & devices on IoT Agent (north)
+  - Sends measurements to IoT Agent (south /iot/json)
+  - Triggers Broker.updateContext on success
+end note
+
+note right of BrokerC
+  libraries/classes/Broker.py
+  - Manages NGSI-LD entities (Road, RoadSegment, TrafficFlowObserved)
+  - Uses DigitalShadowManager to resolve Road/Edge context
+  - ngsildclient for CRUD and update
+end note
+
+note right of DTM
+  Orchestrates SUMO-based calibration & simulation:
+  - Generates routes from historical TimescaleDB data
+  - Runs SUMO via SumoSimulator (libtraci)
+  - Evaluates results via TrafficModeler & statisticUtils
+end note
+
+@enduml

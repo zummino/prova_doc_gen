@@ -1,0 +1,22 @@
+@startuml 
+
+
+package "treeco.frontend" {
+  class Parser {
+    +file: Path
+    +nodes: list
+    +parseModel(): Mapping
+    +_parseTreeEnsembleClassifier(node, graph): Mapping
+    +_parseTreeEnsembleRegressor(node, graph): Mapping
+  }
+
+  class ParseWarning <<Warning>> { }
+  class ParseError <<Exception>> { }
+}
+
+Parser ..> ParseWarning
+Parser ..> ParseError
+Parser ..> onnx.NodeProto : uses (external)
+Parser ..> onnx.GraphProto : uses (external)
+
+@enduml

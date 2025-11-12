@@ -1,0 +1,105 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor<<internal>> #EEF5FF
+  BorderColor #4E79A7
+}
+
+actor Operator as op
+actor "FIWARE IoT Agent" as iota
+actor "Orion-LD Context Broker" as orion
+actor QuantumLeap as ql
+actor TimescaleDB as tsdb
+actor MongoDB as mongo
+actor "SUMO Tools" as sumot
+actor Grafana as grafana
+
+rectangle "FlowTwin System" as System {
+  usecase "Run Preprocessing Setup\n(preprocessingSetup.run)" <<internal>> as UC_Pre
+
+  usecase "Register Service Group\n(Agent.serviceGroupRegistration)" <<internal>> as UC_RegSG
+  usecase "Register Device\n(Agent.measurementRegistration)" <<internal>> as UC_RegDev
+  usecase "Send Measurement\n(Agent.measurementSending)" <<internal>> as UC_SendMeas
+  usecase "Update NGSI-LD Entities\nRoad/RoadSegment/TrafficFlowObserved\n(Broker.updateContext)" <<internal>> as UC_UpdateCB
+  usecase "Create History Subscriptions\n(SubscriptionManager.createQuantumLeapSubscription)" <<internal>> as UC_SubQL
+
+  usecase "Plan Scenario From History\n(DigitalTwinManager.simulateBasicScenarioForOneHourSlot)" <<internal>> as UC_Plan
+
+  usecase "Configure, Calibrate and Run Simulation\n(DigitalTwinManager.configureCalibrateAndRun)" <<internal>> as UC_RunSim
+  usecase "Evaluate Simulation and Compute Metrics\n(TrafficModeler.evaluateModel,\nstatisticUtils.evaluateSimulationError,\nstatisticUtils.compute_mean_tripinfo_metrics)" <<internal>> as UC_Eval
+
+  usecase "Browse Entity List\n(views.entityList)" <<internal>> as UC_List
+  usecase "View Entity Details\n(views.entity)" <<internal>> as UC_Detail
+  usecase "View Monitoring Dashboard\n(views.monitor)" <<internal>> as UC_Monitor
+  usecase "View Simulation Results Summary\n(views.serveResults)" <<internal>> as UC_Results
+
+  ' Preprocessing sub-cases (all implemented)
+  usecase "Export Zones to SUMO\n(exportZonesToSUMO)" <<internal>> as UC_Pre1
+  usecase "Filter With Accuracy\n(filterWithAccuracy)" <<internal>> as UC_Pre2
+  usecase "Fill Missing Directions\n(fillMissingDirections)" <<internal>> as UC_Pre3
+  usecase "Add Zones (TAZ)\n(addZones)" <<internal>> as UC_Pre4
+  usecase "Generate Road Names & Edge IDs\n(generateRoadNamesFile, fillMissingEdgeId)" <<internal>> as UC_Pre5
+  usecase "Map Detectors & Induction Loops\n(generateDetectorsCoordinatesFile,\nmapDetectorsFromCoordinates,\ngenerateInductionLoopFile)" <<internal>> as UC_Pre6
+  usecase "Link Edge IDs & Produce Processed Flow\n(linkEdgeId, generateRealFlow)" <<internal>> as UC_Pre7
+  usecase "Daily/Range Filter & Reorder Dataset\n(filteringDataset, reorderDataset)" <<internal>> as UC_Pre8
+
+  UC_Pre --> UC_Pre1 : <<include>>
+  UC_Pre --> UC_Pre2 : <<include>>
+  UC_Pre --> UC_Pre3 : <<include>>
+  UC_Pre --> UC_Pre4 : <<include>>
+  UC_Pre --> UC_Pre5 : <<include>>
+  UC_Pre --> UC_Pre6 : <<include>>
+  UC_Pre --> UC_Pre7 : <<include>>
+  UC_Pre --> UC_Pre8 : <<include>>
+
+  ' Simulation orchestration decomposition (implemented)
+  usecase "Generate Edge Data per Timeslot\n(preprocessingUtils.generateEdgeDataFile)" <<internal>> as UC_Sim1
+  usecase "Generate Routes\n(Planner.ScenarioGenerator.generateRoute)" <<internal>> as UC_Sim2
+  usecase "Start SUMO\n(SumoSimulator.start)" <<internal>> as UC_Sim3
+  usecase "Save Model Data\n(TrafficModeler.saveTrafficData)" <<internal>> as UC_Sim4
+
+  UC_RunSim --> UC_Sim1 : <<include>>
+  UC_RunSim --> UC_Sim2 : <<include>>
+  UC_RunSim --> UC_Sim3 : <<include>>
+  UC_RunSim --> UC_Sim4 : <<include>>
+  UC_RunSim --> UC_Eval : <<include>>
+
+  ' Measurement path includes CB update (implemented)
+  UC_SendMeas --> UC_UpdateCB : <<include>>
+}
+
+' Human operator interactions (implemented via CLI/Django views)
+op -- UC_Pre
+op -- UC_RunSim
+op -- UC_Plan
+op -- UC_List
+op -- UC_Detail
+op -- UC_Monitor
+op -- UC_Results
+
+' External system interactions (as implemented in code)
+iota -- UC_RegSG
+iota -- UC_RegDev
+iota -- UC_SendMeas
+
+orion -- UC_UpdateCB
+orion -- UC_SubQL
+
+ql -- UC_SubQL
+
+tsdb -- UC_Plan
+tsdb -- UC_RunSim
+tsdb -- UC_Eval
+
+mongo -- UC_List
+mongo -- UC_Detail
+
+sumot -- UC_Pre
+sumot -- UC_Sim2
+sumot -- UC_Sim3
+
+grafana -- UC_Detail
+grafana -- UC_Monitor
+grafana -- UC_Results
+@enduml

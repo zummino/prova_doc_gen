@@ -1,0 +1,13 @@
+@startuml 
+
+
+package "treeco" {
+  class context <<function>> { }
+  class parse_ensemble <<function>> { }
+  class generate_ir <<function>> { }
+  class crown_transform <<function>> { }
+  class trunk_transform <<function>> { }
+  class root_transform <<function>> { }
+}
+
+@enduml

@@ -1,0 +1,116 @@
+@startuml 
+
+package "pyicub.controllers" {
+  class GazeControllerPolyDriver {
+    - __pid__: str
+    - __props__: yarp.Property
+    - __driver__: yarp.PolyDriver
+    + properties
+    + getDriver()
+  }
+
+  class GazeController {
+    - __logger__
+    - __driver__: GazeControllerPolyDriver
+    - __mot_id__: int
+    - __IGazeControl__
+    + PolyDriver
+    + IGazeControl
+    + init()
+    + lookAtAbsAngles(azi, ele, ver, waitMotionDone=True, timeout=0.0)
+    + lookAtRelAngles(azi, ele, ver, waitMotionDone=True, timeout=0.0)
+    + lookAtFixationPoint(x, y, z, waitMotionDone=True, timeout=0.0)
+    + waitMotionDone(period=0.1, timeout=0.0)
+    + waitMotionOnset(speed_ref=0, period=0.1, max_attempts=50)
+    + blockEyes(vergence)
+    + blockNeck()
+    + clearEyes()
+    + clearNeck()
+    + setParams(neck_tt, eyes_tt)
+    + setTrackingMode(mode)
+    + reset()
+  }
+
+  class RemoteControlboard {
+    - __robot_name__: str
+    - __part__: iCubPart
+    - __pid__: str
+    - __driver__: yarp.PolyDriver
+    + getDriver()
+  }
+
+  class PositionController {
+    - __part__: iCubPart
+    - __logger__
+    - __driver__: RemoteControlboard
+    - __IEncoders__
+    - __IControlLimits__
+    - __IControlMode__
+    - __IPositionControl__
+    - __joints__: int
+    - __waitMotionDone__
+    + part
+    + PolyDriver
+    + init()
+    + move(pose: JointPose, req_time: float=0.0, timeout: float=30.0, joints_speed: list=[], waitMotionDone: bool=True, tag: str='default')
+    + stop(joints_list=None)
+    + setPositionControlMode(joints_list)
+    + setCustomWaitMotionDone(motion_complete_at)
+    + unsetCustomWaitMotionDone()
+    + waitMotionDone(motion_time: float=30.0, timeout: float=30.0)
+    + verify_encoders(pose, tolerance=5.0)
+    + isMoving()
+    + getEncoders()
+    + getEncodersSpeeds()
+    + getJointLimits()
+  }
+}
+
+package "pyicub.controllers.position types" {
+  class ICUB_PARTS {
+    + HEAD: str
+    + FACE: str
+    + TORSO: str
+    + LEFT_ARM: str
+    + RIGHT_ARM: str
+    + LEFT_LEG: str
+    + RIGHT_LEG: str
+  }
+
+  class iCubPart {
+    + name: str
+    + robot_part: str
+    + joints_nr: int
+    + joints_list: list
+    + joints_speed: list
+    + toJSON()
+  }
+
+  class JointPose {
+    + target_joints: list
+    + joints_list: list
+    + toJSON()
+  }
+}
+
+' External dependencies
+class "yarp.Property" <<external>>
+class "yarp.PolyDriver" <<external>>
+class "yarp.Vector" <<external>>
+class "yarp.Network" <<external>>
+
+' Associations and compositions
+GazeController *-- GazeControllerPolyDriver : creates/owns
+GazeController ..> "yarp.PolyDriver" : uses
+GazeController ..> "yarp.Vector" : uses
+
+RemoteControlboard *-- iCubPart : owns reference
+RemoteControlboard ..> "yarp.Property" : uses
+RemoteControlboard ..> "yarp.PolyDriver" : uses
+
+PositionController *-- RemoteControlboard : owns
+PositionController o-- iCubPart : configured with
+PositionController ..> JointPose : operates on
+PositionController ..> "yarp.Vector" : uses
+
+@enduml

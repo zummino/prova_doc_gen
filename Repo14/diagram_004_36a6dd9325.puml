@@ -1,0 +1,45 @@
+@startuml 
+
+
+node "Host machine" as host {
+  node "Python process: run_circuits.py" as proc_rc {
+    artifact "run_circuits.py"
+
+    node "qufi package" as qufi {
+      component "qufi.circuit_generator" as cirgen
+      component "qufi.injector" as injector
+      component "qufi.results_processing" as rproc
+    }
+
+    node "External libs" as libs {
+      component "PennyLane\n(qml + devices)" as qml
+      component "Qiskit Aer\n(AerSimulator, NoiseModel)" as aer
+      component "Qiskit providers\n(FakeSantiago, transpile,\nQuantumCircuit, OpenQASM I/O)" as qiskit
+      component "Pandas / Seaborn /\nMatplotlib" as viz
+    }
+  }
+
+  folder "./tmp" as tmp {
+    artifact "*.p.gz\n(gzipped pickle results)" as pfiles
+  }
+
+  folder "./plots" as plots {
+    artifact "heatmaps/*.pdf\nhistograms/*.pdf\ndeltaHeatmaps/*.pdf" as plotfiles
+  }
+}
+
+' Orchestration and data flow
+proc_rc -down-> cirgen : build_circuit(...)
+proc_rc -down-> injector : execute_over_range(...), get_qiskit_coupling_map(...)
+injector -right-> qml : qml.device(...), QNode, transforms, load(...)
+injector -right-> aer : AerSimulator, NoiseModel.from_backend(...)
+injector -right-> qiskit : transpile(...), QuantumCircuit.from_qasm_str(...), FakeSantiago
+injector --> pfiles : save_results(...)
+
+proc_rc -down-> rproc : read_results_directory(...), generate_all_statistics(...)
+rproc -right-> viz : plotting PDFs
+
+rproc --> plotfiles
+rproc --> pfiles : read *.p.gz
+
+@enduml

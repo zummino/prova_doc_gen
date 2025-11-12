@@ -1,0 +1,216 @@
+@startuml
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "connector" {
+  class ConnectorNode {
+    +__init__()
+    -ethic_profile_publisher
+    -user_status_publisher
+    -goal_publisher
+    -host
+    -port
+  }
+}
+
+package "context_manager" {
+  class Analyzer {
+    +__init__(node, context_model, current_context_publisher)
+    +analyze(context_update)
+    -node
+    -context_model
+    -current_context_publisher
+  }
+
+  class Monitor {
+    +__init__(node, analyzer)
+    +monitor_context(msg)
+    -analyzer
+    -node
+  }
+
+  class ContextManagerNode {
+    +__init__()
+    +user_status_update_callback(msg)
+    +user_status_request_callback(request, response)
+    -current_context_publisher
+    -user_status_service
+    -context_model
+    -user_status
+    -analyzer
+    -monitor
+  }
+}
+
+package "ethics_manager" {
+  class Executor {
+    +__init__(node, active_profile, ethic_profiles, active_profile_publisher)
+    +update_active_profile(new_label)
+    +refresh_active_profile()
+    -node
+    -active_profile
+    -ethic_profiles
+    -active_profile_publisher
+  }
+
+  class Planner {
+    +__init__(node, active_profile, executor)
+    +plan_active_profile_change(msg)
+    -node
+    -active_profile
+    -executor
+  }
+
+  class EthicsManagerNode {
+    +__init__()
+    +ethic_profiles_update_callback(msg)
+    -ethic_profiles
+    -active_profile
+    -active_profile_publisher
+    -executor_
+    -planner
+  }
+}
+
+package "mission_controller" {
+  class MissionControllerNode {
+    +__init__()
+    +start_mission_callback(msg)
+    +negotiation_callback(future)
+    -callback_group
+    -mission_running
+    -log_output_file
+    -negotiation_client
+    -goal
+    -start_negotiation_time
+  }
+}
+
+package "negotiation_manager" {
+  class EthicalImpactAnalyzer {
+    +compute_task_ethical_impacts(active_profile)
+  }
+
+  class OfferGenerator {
+    +__init__()
+    +generate_offers(user_status, tasks)
+    +get_offers()
+    +get_max_offer()
+    +has_next()
+    +get_next_offer()
+    -offers
+    -max_offer
+  }
+
+  class UtilityFunction {
+    +__init__(ethical_implications, disposition_activation, node)
+    +set_task_ethical_impacts(ethical_impacts)
+    +compute_utility(offer_1, offer_2)
+    -__compute_offer_utility(offer)
+    -ethical_implications
+    -disposition_activation
+    -node
+    -ethical_impacts
+  }
+
+  class NegotiationEngine {
+    +__init__(node, offer_generator, utility_function, negotiation_publisher)
+    +init_negotiation()
+    +receive_msgs_callback(msg)
+    +send_dice()
+    +send_offer(offer)
+    +send_quit()
+    +send_decision(decision)
+    +execute_negotiation()
+    +sender_negotiation()
+    +receiver_negotiation()
+    -node
+    -offer_generator
+    -utility_function
+    -negotiation_publisher
+    -dice_timeout
+    -timeout
+    -dice_event
+    -receive_offer_event
+    -receive_decision_event
+    -my_id
+    -opponent_id
+    -my_dice
+    -opponent_dice
+    -quitted
+    -opponent_quit_seen
+    -opponent_offer
+    -opponent_quitted
+    -opponent_decision
+    -round_counter
+    -max_offer
+  }
+
+  class NegotiationManagerNode {
+    +__init__()
+    +active_profile_update_callback(msg)
+    +negotiation_service_callback(request, response)
+    +user_status_service_callback(future, event)
+    -callback_group
+    -timeout
+    -negotiating
+    -active_profile
+    -current_user_status
+    -ethical_impact_analyzer
+    -offer_generator
+    -utility_function
+    -active_profile_subscriber
+    -negotiation_publisher
+    -negotiation_engine
+    -negotiation_subscriber
+    -negotiation_service
+    -user_status_service_client
+  }
+}
+
+' rclpy Node base type and service interfaces
+class Node <<rclpy>> {
+}
+
+interface UserStatusService <<srv>>
+interface NegotiationService <<srv>>
+
+' Inheritance from rclpy.node.Node
+Node <|-- ConnectorNode
+Node <|-- ContextManagerNode
+Node <|-- EthicsManagerNode
+Node <|-- MissionControllerNode
+Node <|-- NegotiationManagerNode
+
+' Compositions and uses within subsystems
+ContextManagerNode o-- Analyzer
+ContextManagerNode o-- Monitor
+Monitor --> Analyzer : uses
+
+EthicsManagerNode o-- Executor
+EthicsManagerNode o-- Planner
+Planner --> Executor : uses
+
+NegotiationManagerNode o-- EthicalImpactAnalyzer
+NegotiationManagerNode o-- OfferGenerator
+NegotiationManagerNode o-- UtilityFunction
+NegotiationManagerNode o-- NegotiationEngine
+NegotiationEngine --> OfferGenerator : uses
+NegotiationEngine --> UtilityFunction : uses
+
+' Service provisioning and consumption
+ContextManagerNode ..> UserStatusService : provides "user_status_service"
+NegotiationManagerNode ..> NegotiationService : provides "negotiation"
+NegotiationManagerNode ..> UserStatusService : client
+MissionControllerNode ..> NegotiationService : client
+
+' Notes on HTTP routes (module-level Flask handlers)
+note right of ConnectorNode
+Flask routes (module scope):
+- POST /profile -> publish ethic_profile
+- POST /status -> publish user_status
+- POST /goal -> publish goal
+end note
+
+@enduml

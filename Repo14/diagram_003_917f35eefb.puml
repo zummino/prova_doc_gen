@@ -1,0 +1,52 @@
+@startuml
+
+package "qufi.circuit_generator" {
+  class BernsteinVazirani {
+    +default_n: int = 3
+    +default_s: str = "101"
+    +build_circuit(n: int = default_n, s: str = default_s) : qml.QNode
+  }
+
+  class DeutschJozsa {
+    +default_n: int = 3
+    +default_s: str = "101"
+    +build_circuit(n: int = default_n, s: str = default_s) : qml.QNode
+  }
+
+  class Grover {
+    +build_circuit() : qml.QNode
+  }
+
+  class IQFT {
+    +qft_rotations(wires: int) : void
+    +swap_registers(wires: int) : void
+    +qft(wires: int) : void
+    +build_circuit(nqubits: int = 4) : qml.QNode
+  }
+
+  class Bell {
+    +build_circuit() : qml.QNode
+  }
+}
+
+package "External (PennyLane)" {
+  class "qml.QNode" as QNode <<external>>
+  class "qml.ops" as QOps <<external>>
+}
+
+' Dependencies (derived from actual gate usage and returned types)
+BernsteinVazirani ..> QNode : returns
+BernsteinVazirani ..> QOps : uses H, Z, CNOT, Identity
+
+DeutschJozsa ..> QNode : returns
+DeutschJozsa ..> QOps : uses H, X, CNOT
+
+Grover ..> QNode : returns
+Grover ..> QOps : uses H, X, CNOT
+
+IQFT ..> QNode : returns
+IQFT ..> QOps : uses H, SWAP, ControlledPhaseShift, PhaseShift, adjoint
+
+Bell ..> QNode : returns
+Bell ..> QOps : uses H, CNOT
+@enduml

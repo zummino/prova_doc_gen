@@ -1,0 +1,147 @@
+@startuml
+
+skinparam packageStyle rectangle
+skinparam stereotype {
+  CBackgroundColor<<module>> LightGray
+  CBorderColor<<module>> Black
+}
+
+package "AttackerNode" {
+  class AttackerNode_coilModification <<module>> {
+    +packet_callback(packet)
+  }
+  class AttackerNode_coilModificationStealth <<module>> {
+    +packet_callback(packet)
+  }
+}
+
+package "AttackerNode_ARP" {
+  class AttackerNode_ARP_coilModification <<module>> {
+    +packet_callback(packet)
+  }
+  class AttackerNode_ARP_coilModificationStealth <<module>> {
+    +packet_callback(packet)
+  }
+}
+
+package "CodedPLC.VirtualCodedPLC" {
+  package "G_PLC" {
+    class G_PLC_modbus_server <<module>> {
+      +run_async_server()
+    }
+    class G_PLC_main <<module>>
+  }
+  package "M_PLC" {
+    class M_PLC_modbus_server <<module>> {
+      +run_async_server()
+    }
+    class M_PLC_main <<module>>
+  }
+  package "S_PLC" {
+    class S_PLC_modbus_server <<module>> {
+      +run_async_server()
+    }
+    class S_PLC_main <<module>>
+  }
+  package "T_PLC" {
+    class T_PLC_modbus_server <<module>> {
+      +run_async_server()
+    }
+    class T_PLC_main <<module>>
+  }
+}
+
+package "General_PLC" {
+  class General_PLC_modbus_server <<module>> {
+    +run_async_server()
+  }
+  class General_PLC_main <<module>>
+}
+
+package "IED" {
+  class IED_modbus_server <<module>> {
+    +run_async_server()
+  }
+  class IED_main <<module>>
+}
+
+package "External Libraries" {
+  class NetfilterQueue
+  class IP
+  class TCP
+  class ModbusPDU05WriteSingleCoilRequest
+  class ModbusPDU01ReadCoilsResponse
+  class ModbusADUResponse
+  class ModbusTcpClient
+  class ModbusSequentialDataBlock
+  class ModbusSlaveContext
+  class ModbusServerContext
+  class StartAsyncTcpServer
+}
+
+' AttackerNode dependencies
+AttackerNode_coilModification ..> IP : uses
+AttackerNode_coilModification ..> TCP : uses
+AttackerNode_coilModification ..> NetfilterQueue : uses
+AttackerNode_coilModification ..> ModbusPDU05WriteSingleCoilRequest : uses
+
+AttackerNode_coilModificationStealth ..> IP : uses
+AttackerNode_coilModificationStealth ..> TCP : uses
+AttackerNode_coilModificationStealth ..> NetfilterQueue : uses
+AttackerNode_coilModificationStealth ..> ModbusPDU05WriteSingleCoilRequest : uses
+AttackerNode_coilModificationStealth ..> ModbusPDU01ReadCoilsResponse : uses
+AttackerNode_coilModificationStealth ..> ModbusADUResponse : uses
+
+' AttackerNode-ARP dependencies
+AttackerNode_ARP_coilModification ..> IP : uses
+AttackerNode_ARP_coilModification ..> TCP : uses
+AttackerNode_ARP_coilModification ..> NetfilterQueue : uses
+AttackerNode_ARP_coilModification ..> ModbusPDU05WriteSingleCoilRequest : uses
+
+AttackerNode_ARP_coilModificationStealth ..> IP : uses
+AttackerNode_ARP_coilModificationStealth ..> TCP : uses
+AttackerNode_ARP_coilModificationStealth ..> NetfilterQueue : uses
+AttackerNode_ARP_coilModificationStealth ..> ModbusPDU05WriteSingleCoilRequest : uses
+AttackerNode_ARP_coilModificationStealth ..> ModbusPDU01ReadCoilsResponse : uses
+AttackerNode_ARP_coilModificationStealth ..> ModbusADUResponse : uses
+
+' PLC server module dependencies (pymodbus datastore/server)
+G_PLC_modbus_server ..> ModbusSequentialDataBlock : uses
+G_PLC_modbus_server ..> ModbusSlaveContext : uses
+G_PLC_modbus_server ..> ModbusServerContext : uses
+G_PLC_modbus_server ..> StartAsyncTcpServer : uses
+
+M_PLC_modbus_server ..> ModbusSequentialDataBlock : uses
+M_PLC_modbus_server ..> ModbusSlaveContext : uses
+M_PLC_modbus_server ..> ModbusServerContext : uses
+M_PLC_modbus_server ..> StartAsyncTcpServer : uses
+
+S_PLC_modbus_server ..> ModbusSequentialDataBlock : uses
+S_PLC_modbus_server ..> ModbusSlaveContext : uses
+S_PLC_modbus_server ..> ModbusServerContext : uses
+S_PLC_modbus_server ..> StartAsyncTcpServer : uses
+
+T_PLC_modbus_server ..> ModbusSequentialDataBlock : uses
+T_PLC_modbus_server ..> ModbusSlaveContext : uses
+T_PLC_modbus_server ..> ModbusServerContext : uses
+T_PLC_modbus_server ..> StartAsyncTcpServer : uses
+
+General_PLC_modbus_server ..> ModbusSequentialDataBlock : uses
+General_PLC_modbus_server ..> ModbusSlaveContext : uses
+General_PLC_modbus_server ..> ModbusServerContext : uses
+General_PLC_modbus_server ..> StartAsyncTcpServer : uses
+
+IED_modbus_server ..> ModbusSequentialDataBlock : uses
+IED_modbus_server ..> ModbusSlaveContext : uses
+IED_modbus_server ..> ModbusServerContext : uses
+IED_modbus_server ..> StartAsyncTcpServer : uses
+
+' PLC/IED main scripts dependency on ModbusTcpClient
+G_PLC_main ..> ModbusTcpClient : uses
+M_PLC_main ..> ModbusTcpClient : uses
+S_PLC_main ..> ModbusTcpClient : uses
+T_PLC_main ..> ModbusTcpClient : uses
+General_PLC_main ..> ModbusTcpClient : uses
+IED_main ..> ModbusTcpClient : uses
+
+@enduml

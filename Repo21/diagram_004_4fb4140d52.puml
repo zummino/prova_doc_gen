@@ -1,0 +1,14 @@
+@startuml 
+
+
+package "treeco.dialects.crown" {
+  class TreeEnsembleOp <<IRDLOperation>> {
+    +buffer_in: MemRefType
+    +buffer_out: MemRefType
+    +ensemble: TreeEnsembleAttr
+  }
+
+  TreeEnsembleOp ..> treeco.dialects.treeco.TreeEnsembleAttr : uses
+}
+
+@enduml

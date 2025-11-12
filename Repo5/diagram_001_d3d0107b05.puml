@@ -1,0 +1,29 @@
+@startuml
+
+left to right direction
+
+actor "HTTP Client\n(REST caller)" as http
+actor "Monitored Properties\nPublisher" as mpp
+actor "External Negotiation\nParticipant" as opp
+
+rectangle "RobEthiChor" as system {
+  usecase "POST /profile\n-> publish 'ethic_profile'" as UC_ProfilePost
+  usecase "POST /status\n-> publish 'user_status'" as UC_StatusPost
+  usecase "POST /goal\n-> publish 'goal'" as UC_GoalPost
+  usecase "Process 'monitored_properties'\n-> update context and publish 'current_context'" as UC_Monitored
+  usecase "Update active ethical profile\non 'current_context'\n-> publish 'active_profile'" as UC_ActiveProfile
+  usecase "Negotiate via '/negotiation_msgs'\n(dice, offer, decision, quit)\n-> return outcome, rounds" as UC_Negotiate
+}
+
+http --> UC_ProfilePost
+http --> UC_StatusPost
+http --> UC_GoalPost
+
+mpp --> UC_Monitored
+
+opp --> UC_Negotiate
+
+UC_GoalPost --> UC_Negotiate : <<includes>>
+UC_Monitored --> UC_ActiveProfile : <<includes>>
+
+@enduml

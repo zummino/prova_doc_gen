@@ -1,0 +1,224 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package "Go TorBot/gotor" as GoGotor {
+  package "linktree" as GoLinktree {
+    class Node {
+      +URL: string
+      +StatusCode: int
+      +Status: string
+      +Children: Node[*]
+      -client: http.Client
+      -loaded: bool
+      -lastLoaded: time.Time
+      +PrintTree()
+      +Load(depth: int)
+      +Crawl(depth: int, work: func(string))
+      -updateStatus(): error
+    }
+
+    class tokenFilter {
+      +tags: map[string]bool
+      +attributes: map[string]bool
+    }
+
+    Node "0..*" o-- "1" Node : Children
+    Node ..> tokenFilter : uses
+  }
+
+  package "internal.config" as GoConfig {
+    class SOCKS5Config {
+      +Port: string
+      +Host: string
+    }
+
+    class Config {
+      +Proxy: SOCKS5Config
+      +LogLevel: string
+      +UseTor: bool
+    }
+
+    Config *-- SOCKS5Config
+  }
+}
+
+package "Python TorBot" as PyTorbot {
+  package "modules.linktree" as PyLinktree {
+    class LinkTree {
+      -_tree
+      +__init__(root: str, depth: int)
+      +save(file_name: str)
+      +show()
+    }
+  }
+
+  package "main" as PyMain {
+    class TorBot {
+      +args
+      +__init__(args)
+      +get_header()
+      +handle_json_args(args)
+      +handle_tree_args(args)
+      +perform_action()
+    }
+  }
+
+  package "modules.color" as PyColor {
+    class color {
+      -_msg: str
+      -_color: str
+      +__init__(message: str, selected: str)
+      +__str__(): str
+      +__add__(other)
+      +__radd__(other)
+    }
+  }
+
+  TorBot ..> LinkTree : uses
+  TorBot ..> color : uses
+}
+
+package "Launcher/app" as LauncherApp {
+  package "utils.models" as LModels {
+    class Input {
+      +input_key: str
+      +description: str
+      +type: str
+      +__init__(input_key: str, description: str, type: str)
+      +__repr__(): str
+    }
+
+    class EntrypointConfig {
+      +feature_key: str
+      +name: str
+      +description: str
+      +command: str
+      +inputList: list[Input]
+      +__init__(feature_key: str, name: str, description: str, command: str, inputList: list[Input])
+      +replace_input_in_command(inputs: dict): str
+      +__repr__(): str
+    }
+
+    class ToolConfig {
+      +toolName: str
+      +description: str
+      +image: str
+      +entrypointList: list[EntrypointConfig]
+      +__init__(tool_config: dict)
+      +get_feature(feature: str)
+      +feature_validation(feature: str): bool
+      +input_validation(feature: str, user_inputs: dict): bool
+      +__repr__(): str
+    }
+
+    ToolConfig "1" o-- "*" EntrypointConfig
+    EntrypointConfig "1" o-- "*" Input
+  }
+
+  package "utils.services" as LServices {
+    class DockerServices {
+      -_log
+      -_client
+      +build_image(folder_path, tag, dockerfile="Dockerfile")
+      +pull_image(tag)
+      +run_tool_container(image, output_volume, entrypoint)
+    }
+
+    class ToolManager {
+      {static} +tools_list(tools_path)
+      {static} +read_tool_config(tools_base_path: str, tool: str)
+    }
+  }
+}
+
+package "Old-Launcher (legacy)" as OldLauncher {
+  package "models" as OldModels {
+    class ToolInput {
+      +key: str
+      +description: str
+      +format_type: str
+      +help_string(): str
+      +__str__(): str
+      +to_json(): dict
+    }
+
+    class ToolEntrypoint {
+      +key: str
+      +description: str
+      +inputs: [str]
+      +command: str
+      +help_string(): str
+      +__str__(): str
+      +to_json(): dict
+    }
+
+    class ToolConfigOld as ToolConfigLegacy {
+      +name: str
+      +description: str
+      +inputs: [ToolInput]
+      +entrypoints: [ToolEntrypoint]
+      +__str__(): str
+      +to_json(): dict
+    }
+
+    ToolConfigLegacy "1" o-- "*" ToolInput
+    ToolConfigLegacy "1" o-- "*" ToolEntrypoint
+  }
+
+  package "services" as OldServices {
+    class DockerServicesOld {
+      -_client
+      -_log
+      -_image_tag
+      -_logstash_container
+      +build_image(folder_path)
+      +run_tool_container(name, output_volume, entrypoint)
+      +run_logstash_container(tool)
+      +stop_logstash_container()
+    }
+
+    class YAMLServices {
+      +read_tool_config(tool: str): ToolConfigLegacy
+    }
+  }
+
+  package "core" as OldCore {
+    class Globals {
+      {static} +tools(): [str]
+      {static} +help_message(): str
+      {static} +help_tool_message(): str
+    }
+
+    class Starter {
+      {static} +check_for_help(): bool
+      {static} +check_for_tool_help(): bool
+      {static} +fetch_launcher_params()
+      {static} +fetch_launcher_params_from_json(json: dict)
+      -- internal validation --
+      {static} -_check_tool_validity(tool: str): bool
+      {static} -_check_entry_validity(tool: str, entry: str): bool
+      {static} -_check_inputs_validity(tool: str, entry: str, inputs: [str]): bool
+      {static} -_command_line_interface()
+      {static} -_interactive()
+    }
+
+    class LauncherOld as LauncherLegacy {
+      -tool: str
+      -entrypoint: str
+      -inputs: [str]
+      -tool_config: ToolConfigLegacy
+      +launch_tool(): bool
+      +generate_output(): bool
+      +upload_output(): bool
+      +clear_artifacts()
+      +wait_for_file(filename, timeout=60): bool
+      +read_json_file(file_path): [str]
+    }
+  }
+
+  LauncherLegacy ..> DockerServicesOld : uses
+  LauncherLegacy ..> YAMLServices : uses
+  Starter ..> YAMLServices : uses
+  Globals ..> YAMLServices : uses
+}
+@enduml

@@ -1,0 +1,14 @@
+@startuml 
+
+
+package "treeco.dialects.extended.bufferization" {
+  class MaterializeInDestinationOp <<IRDLOperation>> {
+    +source: TensorType|MemRefType
+    +dest: TensorType|MemRefType
+    +restrict?: UnitAttr
+    +writable?: UnitAttr
+    +res*: var results
+  }
+}
+
+@enduml

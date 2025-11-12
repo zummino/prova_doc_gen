@@ -1,0 +1,91 @@
+@startuml
+
+left to right direction
+
+actor "PyiCubRESTfulClient" as Client
+actor "RESTSubscriberFSM" as Sub
+actor "Actionizer CLI (pyicub.proc.actionizer)" as Actionizer
+actor "FSMizer CLI (pyicub.proc.fsmizer)" as FSMizer
+actor "REST Proxy (iCubRESTManager proxy)" as Proxy
+
+' External YARP services
+actor "YARP /iKinGazeCtrl" as GazeSrv
+actor "YARP remote_controlboard" as RCB
+actor "YARP /iSpeak" as SpeakSrv
+actor "YARP /<robot>/face/emotions/in" as EmoSrv
+actor "YARP cameras (/cam...)" as CamSrv
+actor "YARP /LLM and /GPT" as LLMSrv
+
+rectangle "pyicub" as SYS {
+  rectangle "REST API (iCubRESTManager + iCubRESTApp)" as REST {
+    usecase "Discover robots/apps/services" as UC_Discover
+    usecase "Execute target (wrapper_target)" as UC_Exec
+    usecase "helper/actions.playAction" as UC_Play
+    usecase "helper/actions.getActions" as UC_GetActions
+    usecase "helper/actions.importAction" as UC_Import
+    usecase "helper/actions.flushActions" as UC_Flush
+    usecase "gaze.lookAtFixationPoint" as UC_GazeLook
+    usecase "speech.say" as UC_Say
+    usecase "emo.sendCmd / emo.*" as UC_Emo
+    usecase "cam_right.getImgRes/getURI\ncam_left.getImgRes/getURI" as UC_Cam
+    usecase "attention.observe_points /\nvisual_search_* / visual_tracking_*" as UC_Attn
+    usecase "gpt.query / gpt.*" as UC_LLM
+    usecase "fsm.runStep / fsm.toJSON" as UC_FSM
+    usecase "Subscribe/Unsubscribe topic" as UC_Subscribe
+    usecase "Notify subscribers (enter/exit)" as UC_Notify
+    usecase "Register/Unregister at proxy" as UC_Register
+    usecase "Query request status" as UC_Req
+  }
+  rectangle "CLI tools" as CLI {
+    usecase "Build actions from module -> JSON\n(ActionsManager.exportActions)" as UC_BuildActions
+    usecase "Run actions from repository\n(iCub.playAction)" as UC_RunActions
+    usecase "Build FSMs from module -> JSON\n(FSMsManager.exportFSMs)" as UC_BuildFSMs
+  }
+  rectangle "Helper (iCub) + Controllers" as Helper {
+    usecase "Move joints via PositionController\n(remote_controlboard)" as UC_MoveJoints
+    usecase "Control gaze via GazeController\n(iKinGazeCtrl)" as UC_ControlGaze
+  }
+}
+
+' Client interactions
+Client -- UC_Discover
+Client -- UC_Exec
+Client -- UC_Play
+Client -- UC_GetActions
+Client -- UC_Import
+Client -- UC_Flush
+Client -- UC_GazeLook
+Client -- UC_Say
+Client -- UC_Emo
+Client -- UC_Cam
+Client -- UC_Attn
+Client -- UC_LLM
+Client -- UC_FSM
+Client -- UC_Req
+
+' Subscriber interactions
+Sub -- UC_Subscribe
+Sub -- UC_Notify
+
+' Proxy interactions
+Proxy -- UC_Register
+
+' CLI interactions
+Actionizer -- UC_BuildActions
+Actionizer -- UC_RunActions
+FSMizer -- UC_BuildFSMs
+
+' Internal flows to controllers
+UC_Play ..> UC_MoveJoints : uses
+UC_GazeLook ..> UC_ControlGaze : uses
+UC_Attn ..> UC_ControlGaze : uses
+
+' Interactions with YARP services
+UC_ControlGaze -- GazeSrv
+UC_MoveJoints -- RCB
+UC_Say -- SpeakSrv
+UC_Emo -- EmoSrv
+UC_Cam -- CamSrv
+UC_LLM -- LLMSrv
+
+@enduml

@@ -1,0 +1,359 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+hide empty methods
+hide empty attributes
+
+' External dependencies (as references)
+class "ngsildclient.Client" as NGSIClient <<external>>
+class "ngsildclient.Entity" as NGSIENTITY <<external>>
+class "ngsildclient.Rel" as NGSIREL <<external>>
+class "requests.structures.CaseInsensitiveDict" as CaseInsensitiveDict <<external>>
+class "mongoengine.Document" as MEDocument <<external>>
+class "mongoengine.EmbeddedDocument" as MEEmbeddedDocument <<external>>
+interface "libtraci.StepListener" as LibtraciStepListener <<external>>
+
+package "libraries.constants" as constants {
+  class Constants <<static>> {
+    +CONTAINER_ENV_FILE_PATH
+    +TRANSPORTATION_DATA_MODEL_CTX
+    +DEVICE_DATA_MODEL_CTX
+    +ROAD_SEGMENT_DATA_MODEL_TYPE
+    +ROAD_DATA_MODEL_TYPE
+    +TRAFFIC_FLOW_OBSERVED_DATA_MODEL_TYPE
+    +SHADOW_TYPE_FILE_PATH
+    +SHADOW_TYPE_PATH
+    +SHADOWS_PATH
+    +REAL_WORLD_DATA_PATH
+    +REAL_TRAFFIC_FLOW_DATA_MVENV_PATH
+    +REAL_TRAFFIC_FLOW_DATA_MVENV_FILE_PATH
+    +REGISTERED_DEVICES_PATH
+    +TRAFFIC_FLOW_OPENDATA_FILE_PATH
+    +ACCURACY_TRAFFIC_LOOP_OPENDATA_FILE_PATH
+    +PROCESSED_DATA_PATH
+    +TRAFFIC_FLOW_ACCURATE_FILE_PATH
+    +PROCESSED_TRAFFIC_FLOW_EDGE_FILE_PATH
+    +ROAD_NAMES_FILE_PATH
+    +EDGE_DATA_FILE_PATH
+    +DAILY_TRAFFIC_FLOW_FILE_PATH
+    +SUMO_PATH
+    +SUMO_NET_PATH
+    +SUMO_DETECTORS_ADD_FILE_PATH
+    +SUMO_LOG_PATH
+    +SUMO_TOOLS_PATH
+    +SCENARIO_COLLECTION_PATH
+  }
+}
+
+package "libraries.classes" {
+  class Agent {
+    +agentID: str
+    +hostname: str
+    +brokerPortNumber: int
+    +southPortNumber: int
+    +northPortNumber: int
+    +fiwareService: str
+    +fiwareServicePath: str
+    -cbReference: Broker
+    -cbConnection: NGSIClient
+    +__init__(aid, hostname, cb_port, south_port, northport, fw_service, fw_path)
+    +isServiceGroupRegistered(entity_type: str)
+    +isDeviceRegistered(device_id: str)
+    +getServiceGroupKey(entity_type)
+    +serviceGroupRegistration(api_key: str, entity_type: str)
+    +measurementRegistration(measure_type: str, device_id: str, entity_type: str, timezone, controlled_asset: str)
+    +retrievingData(*data, device_id, device_key)
+    +measurementSending(date: str, timeSlot: str, flow: int, coordinates, direction: str, measure_type: str, device_key, device_id)
+  }
+
+  class Broker {
+    +portNumber: int
+    +portTemporal: int
+    +fiwareService: str
+    +hostname: str
+    -entitiesList: List[Tuple[str,int]]
+    -shadowManagerReference: DigitalShadowManager
+    +__init__(pn: int, pnt: Optional[int], host: str, fiwareservice: str)
+    +createConnection() : NGSIClient
+    +addEntitiesList(entityType: str, progressiveNumber: int)
+    +getEntitiesList() : List[Tuple[str,int]]
+    +displayEntities()
+    +getProgressiveNumber(entityType: str) : int
+    +updateProgressiveNumber(entityType: str, newNumber: int)
+    +updateContext(deviceID: str, date: str, timeSlot: str, trafficFlow: int, coordinates: List[float], laneDirection: str, cbConnection: NGSIClient) : bool
+    +createRoadSegmentEntity(progressiveNumber: int, startPoint: int, endPoint: int, coordinates: List[float], direction: str, edgeID: str, trafficFlow: int, date: str, trafficLoopID: str, timeslot: str) : NGSIENTITY
+    +updateRoadSegmentRelation(rsEntity: NGSIENTITY, roadID: str, traffiFlowObsID: str) : NGSIENTITY
+    +createTrafficFlowObsEntity(progressiveNumber: int, direction: str, trafficFlow: int, date: str, trafficLoopID: str, roadSegmentID: str, timeslot: str) : NGSIENTITY
+    +createRoadEntity(progressiveNumber: int, roadName: str) : NGSIENTITY
+    +updateRoadRelation(rEntity: NGSIENTITY, roadSegmentID: str) : NGSIENTITY
+    +searchEntity(cbConnection: NGSIClient, dataSearch: str, eType: str) : NGSIENTITY
+    +updateFlow(cbConnection: NGSIClient, newFlow: int, date: str, cEntity: NGSIENTITY, eType: str, timeslot: str) : bool
+  }
+
+  class ContextUpdateError <<Exception>> {
+    +entityType: List[str]
+    +additionalInfo: str
+    +__init__(message: str, entityType: List[str], additionalInfo: str="")
+    +__str__() : str
+  }
+  class RoadEntityError <<Exception>> {
+    +__init__(message: str, coordinates: List[float], laneDirection: str)
+  }
+  class RoadSegmentEntityError <<Exception>> {
+    +__init__(message: str, entityID: str)
+  }
+  class TrafficFlowObservedError <<Exception>> {
+    +__init__(message: str, supposedID: str)
+  }
+
+  class DataManager {
+    +name: str
+    -dbManagersByTypes: Dict[str, List[Any]]
+    +__init__(name: str)
+    +addDBManager(dbManager: Any)
+    +getDBManagerByType(dbType: str) : Any
+    +getDBConnectionByType(dbType: str)
+  }
+
+  class DBManager {
+    +name: str
+    +__init__(name: str)
+  }
+
+  class TimescaleManager {
+    +connectionString: str
+    +connection
+    +cursor
+    +__init__(host="localhost", port="5432", dbname="quantumleap", username="postgres", password="postgres", managerName="TimescaleDBManager")
+    +dbConnect(host, port, dbname, username, password) : (connection, cursor)
+    +retrieveHistoricalDataForTimeslot(timeslot: str, date: str, entityType: str, timecolumn: str)
+    +createView(tableName: str, viewName: str, schema="mtopeniot")
+  }
+
+  class MongoDBManager {
+    +client
+    +db
+    +__init__(connectionString: str, dbName: str)
+  }
+
+  class DigitalShadowManager {
+    -shadowsByTypes: Dict[str, List[Shadow]]
+    -dataProcessor: ShadowDataProcessor
+    +__init__()
+    +clearShadowData()
+    +addShadow(shadowType: str, timeSlot: str, trafficFlow: int, coordinates: List[float], direction: str, deviceID: str) : Shadow
+    +searchShadow(shadowType: str, timeSlot: str, trafficFlow: int, coordinates: List[float], laneDirection: str, deviceID: str) : Shadow
+    +saveShadowToCSV(shadowType: str, shadow: Shadow)
+  }
+
+  class Shadow {
+    +name: str
+    +__init__(name: str, **attributes)
+    +__repr__() : str
+    +get(attribute: str) : Any
+    +set(attribute: str, value: Any) : void
+    +getAllAttributes() : Dict[str,Any]
+  }
+
+  class ShadowDataProcessor {
+    -df
+    +__init__(datapath)
+    +searchRoad(coordinates, direction: str, deviceID: str) : (str,str,str,str)
+    +searchTrafficLoop(deviceID: str, coordinates, direction: str) : (str,int)
+  }
+
+  class DigitalTwinManager {
+    +sumoSimulator: SumoSimulator_Simulator
+    +planner: Planner
+    +dtDataManager: DataManager
+    +__init__(dataManager: DataManager, sumoConfigurationPath: str, sumoLogFile: str)
+    +simulateBasicScenarioForOneHourSlot(timeslot: str, date: str, entityType: str, totalVehicles: int, minLoops: int, congestioned: bool, activeGui: bool=False, timecolumn: Optional[str]="timeslot")
+    +generateGraphs(scenarioFolder: str)
+    +showGraphs(scenarioFolder: str, saveSummary=False)
+  }
+
+  class Planner {
+    +simulator: SumoSimulator_Simulator
+    +scenarioGenerator: ScenarioGenerator
+    +__init__(simulator: SumoSimulator_Simulator)
+    +planBasicScenarioForOneHourSlot(collectedData, entityType: str, totalVehicles: int, minLoops: int, congestioned: bool, activeGui: bool=False)
+  }
+
+  class ScenarioGenerator {
+    +sumoConfiguration: str
+    +sim: SumoSimulator_Simulator
+    +__init__(sumocfg: str, sim: SumoSimulator_Simulator)
+    +defineScenarioFolder(congestioned: bool=False) : str
+    +generateRoutes(edgefile: str, folderPath: str, totalVehicles: int, minLoops: int=1, congestioned: bool=False) : str
+    +setScenario(routeFilePath=None, manual: bool=False, absolutePath: bool=False)
+  }
+
+  class QuantumLeapManager {
+    +containerName: str
+    +cbPort: int
+    +quantumleapPort: int
+    -activeSubscriptions: Dict[str, List[Any]]
+    +__init__(containerName: str, cbPort: int, quantumleapPort: int)
+    +createQuantumLeapSubscription(cbConnection: NGSIClient, entityType: str, attribute: str, description: str)
+  }
+
+  class SumoSimulator_Simulator as "Simulator (libraries.classes.SumoSimulator)" {
+    +configurationPath: str
+    +routePath: str
+    +logFile: str
+    +listener: ValueListener
+    +__init__(configurationPath: str, logFile: str)
+    +start(activeGui: bool=False, logFilePath: Optional[str]=None)
+    +startBasic(activeGui=False)
+    +startCongestioned(activeGui=False)
+    +step(quantity=1)
+    +oneHourStep()
+    +resume()
+    +end()
+    +getRemainingVehicles()
+    +changeRoutePath(routePath: str)
+    +getVehiclesSummary()
+    +getDetectorList()
+    +getAverageOccupationTime()
+    +getInductionLoopSummary()
+    +findLinkedTLS(detectorID: str)
+    +subscribeToInductionLoop(inductionLoopID, value: str)
+    +checkSubscription()
+    +getTLSList()
+    +checkTLS(tlsID)
+    +setTLSProgram(trafficLightID: str, programID: str, all=False)
+  }
+
+  class ValueListener {
+    +step(t=0)
+  }
+}
+
+package "mobilityvenv" {
+  class Device {
+    +devicePartialID: str
+    +deviceType: str
+    +apiKey: str
+    +__init__(partial_id: str, devicetype: str, key: str)
+  }
+
+  class Sensor {
+    +name: str
+    +sensorType: str
+    -dataCallback
+    +__init__(device_partialid: str, devicekey: str, name: str, sensortype: str)
+    +help(method_names=None)
+    +setDataCallback(callback)
+    +sendData(*data, device_id: str, device_key: str)
+  }
+
+  class PhysicalSystemConnector {
+    +partialIdentifier: str
+    +name: str
+    -_sensors: List[Sensor]
+    +__init__(psc_partial_id: str, psc_name_id: str)
+    +help(method_names=None)
+    +sensors() : list
+    +addSensor(*sensors)
+    +sensorExist(device_partial_id: str) : bool
+    +getSensor(device_partial_id: str) : Sensor
+    +numberConnectedDevice() : int
+    +saveConnectedDevice(folder)
+  }
+}
+
+package "udtBackEnd.udtApp.models" as udtmodels {
+  class Django_Simulator as "Simulator (udtBackEnd.udtApp.models)" {
+    +configurationPath: str
+    +routeFilePath: str
+  }
+
+  class Misuration {
+    +entity_id: str
+    +time_index: datetime
+    +trafficflow: int
+    {static} +Meta(db_table='mtopeniot.etdevice', managed=False)
+  }
+
+  class DeviceID {
+    +id: str
+    +type: str
+    +servicePath: str
+  }
+
+  class Metadata {
+    +observedAt: float
+  }
+
+  class Attribute {
+    +value: dict
+    +type: str
+    +md: Metadata
+    +creDate: float
+    +modDate: float
+  }
+
+  class Device {
+    +_id: DeviceID
+    +attrNames: List[str]
+    +attrs: dict
+    +creDate: float
+    +modDate: float
+    +lastCorrelator: str
+    {static} +meta: {'collection': 'entities'}
+  }
+}
+
+' Inheritance
+RoadEntityError -up-|> ContextUpdateError
+RoadSegmentEntityError -up-|> ContextUpdateError
+TrafficFlowObservedError -up-|> ContextUpdateError
+
+TimescaleManager -up-|> DBManager
+MongoDBManager -up-|> DBManager
+
+Sensor -up-|> Device
+ValueListener -up-|> LibtraciStepListener
+
+udtmodels.Device -up-|> MEDocument
+udtmodels.DeviceID -up-|> MEEmbeddedDocument
+udtmodels.Metadata -up-|> MEEmbeddedDocument
+udtmodels.Attribute -up-|> MEEmbeddedDocument
+
+' Associations and dependencies
+Agent o-- Broker
+Agent ..> NGSIClient
+Agent ..> CaseInsensitiveDict
+
+Broker o-- DigitalShadowManager
+Broker ..> NGSIClient
+Broker ..> NGSIENTITY
+Broker ..> NGSIREL
+
+DataManager ..> DBManager
+DataManager o-- TimescaleManager
+DataManager o-- MongoDBManager
+
+DigitalShadowManager o-- ShadowDataProcessor
+DigitalShadowManager o-- Shadow
+
+DigitalTwinManager o-- SumoSimulator_Simulator
+DigitalTwinManager o-- Planner
+DigitalTwinManager o-- DataManager
+
+Planner o-- ScenarioGenerator
+Planner o-- SumoSimulator_Simulator
+
+ScenarioGenerator o-- SumoSimulator_Simulator
+
+QuantumLeapManager ..> NGSIClient
+
+SumoSimulator_Simulator o-- ValueListener
+
+PhysicalSystemConnector o-- Sensor
+Sensor ..> Agent : dataCallback
+
+udtmodels.Attribute o-- udtmodels.Metadata
+udtmodels.Device o-- udtmodels.DeviceID
+
+@enduml

@@ -1,0 +1,87 @@
+@startuml 
+skinparam monochrome true
+
+cloud "YARP transport" as yarp
+
+node "Application Host\n(Python + Flask)" as app {
+  artifact "iCubRESTApp + iCubRESTManager\nREST API: http://<host>:<port>/pyicub" as rest
+  artifact "iCub helper runtime\n- controllers.gaze\n- controllers.position\n- modules.emotions\n- modules.speech\n- modules.camera\n- modules.faceLandmarks (client)\n- modules.llm (client)\n- modules.attention" as helper
+}
+
+node "Robot Host\n(iCub or icubSim)" as robot {
+  component "/iKinGazeCtrl" as iKin
+  component "/<robot>/head" as head
+  component "/<robot>/torso" as torso
+  component "/<robot>/left_arm" as larm
+  component "/<robot>/right_arm" as rarm
+  component "/<robot>/left_leg" as lleg
+  component "/<robot>/right_leg" as rleg
+  component "/<robot>/face/emotions/in" as emoIn
+  component "/<robot>/face/raw/in" as faceRawIn
+  component "/icub/camcalib/left/out\nor /icubSim/cam/left/rgbImage:o" as leftCam
+  component "/icub/camcalib/right/out\nor /icubSim/cam/right/rgbImage:o" as rightCam
+}
+
+node "Audio TTS Host" as tts {
+  component "/iSpeak" as iSpeak
+  component "/iSpeak/rpc" as iSpeakRpc
+}
+
+node "Vision Host" as vision {
+  component "/faceLandmarks/landmarks:o" as flLandmarks
+  component "/faceLandmarks/faces:o" as flFaces
+}
+
+node "LLM Host" as llm {
+  component "/LLM/rpc:i" as llmRpc
+  component "/GPT/rpc:i" as gptRpc
+}
+
+node "REST Client Host" as client {
+  artifact "PyiCubRESTfulClient or any HTTP client" as httpClient
+}
+
+node "REST Proxy (optional)" as proxy {
+  artifact "iCubRESTManager (proxy aggregator)\nhttp://<proxy_host>:<proxy_port>/pyicub" as proxyMgr
+}
+
+client --> rest : HTTP
+rest --> proxyMgr : register/unregister/subscribe (HTTP)
+
+helper -- yarp
+yarp -- iKin
+yarp -- head
+yarp -- torso
+yarp -- larm
+yarp -- rarm
+yarp -- lleg
+yarp -- rleg
+yarp -- emoIn
+yarp -- faceRawIn
+yarp -- leftCam
+yarp -- rightCam
+yarp -- iSpeak
+yarp -- iSpeakRpc
+yarp -- flLandmarks
+yarp -- flFaces
+yarp -- llmRpc
+yarp -- gptRpc
+
+helper --> iKin : gazecontrollerclient\n/pyicub/gaze/<pid> -> /iKinGazeCtrl
+helper --> head : remote_controlboard\n/pyicub/<pid>/<robot>/HEAD -> /<robot>/head
+helper --> torso : remote_controlboard\n/pyicub/<pid>/<robot>/TORSO -> /<robot>/torso
+helper --> larm : remote_controlboard\n/pyicub/<pid>/<robot>/LEFTARM_FULL|LEFTARM|LEFTHAND -> /<robot>/left_arm
+helper --> rarm : remote_controlboard\n/pyicub/<pid>/<robot>/RIGHTARM_FULL|RIGHTARM|RIGHTHAND -> /<robot>/right_arm
+helper --> lleg : remote_controlboard\n/pyicub/<pid>/<robot>/LEFTLEG -> /<robot>/left_leg
+helper --> rleg : remote_controlboard\n/pyicub/<pid>/<robot>/RIGHTLEG -> /<robot>/right_leg
+helper --> emoIn : bottle write\n/pyicub/emotions:o -> /<robot>/face/emotions/in
+helper --> faceRawIn : bottle write\n/face/raw/out -> /<robot>/face/raw/in
+leftCam --> helper : image read
+rightCam --> helper : image read
+flLandmarks --> helper : landmarks read\n/faceLandmarksPyCtrl/landmarks:i
+flFaces --> helper : faces read\n/faceLandmarksPyCtrl/faces:i
+helper --> iSpeak : say text\n/pyicub/speech:o -> /iSpeak
+helper --> iSpeakRpc : status RPC\n/iSpeak/rpc
+helper --> llmRpc : /LLM/rpc:i
+helper --> gptRpc : /GPT/rpc:i
+@enduml

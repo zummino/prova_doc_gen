@@ -1,0 +1,61 @@
+@startuml 
+
+package "treeco.dialects.treeco" {
+  class LeafType <<ParametrizedAttribute, TypeAttribute>> {
+    +target_type: TensorType
+    +target_map: AffineMapAttr
+    +get_leaf_shape()
+  }
+  class NodeType <<ParametrizedAttribute, TypeAttribute>> {
+    +weight_type: AnyNumericType
+  }
+  class TreeType <<ParametrizedAttribute, TypeAttribute>> {
+    +n_features: IntegerAttr
+    +node_type: NodeType
+    +leaf_type: LeafType
+  }
+  class TreeEnsembleType <<ParametrizedAttribute, TypeAttribute>> {
+    +tree_type: TreeType
+    +n_features: IntegerAttr
+    +aggregate_mode: StringAttr
+    +post_transform: StringAttr
+  }
+  class TreeEnsembleAttr <<ParametrizedAttribute>> {
+    +n_features: IntegerAttr
+    +aggregate_mode: StringAttr
+    +post_transform: StringAttr
+    +targets_ids: DenseIntOrFPElementsAttr
+    +targets_treeids: DenseIntOrFPElementsAttr
+    +targets_nodeids: DenseIntOrFPElementsAttr
+    +targets_weights: DenseIntOrFPElementsAttr
+    +nodes_falsenodeids: DenseIntOrFPElementsAttr
+    +nodes_featureids: DenseIntOrFPElementsAttr
+    +nodes_modes: ArrayAttr[StringAttr]
+    +nodes_nodeids: DenseIntOrFPElementsAttr
+    +nodes_treeids: DenseIntOrFPElementsAttr
+    +nodes_truenodeids: DenseIntOrFPElementsAttr
+    +nodes_values: DenseIntOrFPElementsAttr
+    +nodes_hitrates: DenseIntOrFPElementsAttr
+    +get_leaf_shape(): int
+    +get_n_trees(): int
+    +get_n_targets(): int
+    +node_type(): NodeType
+    +leaf_type(): LeafType
+    +tree_type(): TreeType
+    +get_stopping_constant(): int
+    +ensemble_type(): TreeEnsembleType
+    +to_dict(): Mapping
+  }
+  class CastSignOp <<IRDLOperation>> { }
+  class Cast <<IRDLOperation>> { }
+
+  TreeType --> NodeType
+  TreeType --> LeafType
+  TreeEnsembleType --> TreeType
+  TreeEnsembleAttr ..> NodeType : derives
+  TreeEnsembleAttr ..> LeafType : derives
+  TreeEnsembleAttr ..> TreeType : derives
+  TreeEnsembleAttr ..> TreeEnsembleType : derives
+}
+
+@enduml

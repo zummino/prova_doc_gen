@@ -1,0 +1,117 @@
+@startuml 
+
+
+package "pyicub.actions" {
+  class JointsTrajectoryCheckpoint {
+    + pose: JointPose
+    + duration: float
+    + timeout: float
+    + joints_speed: list
+    + toJSON()
+  }
+
+  class LimbMotion {
+    + part: iCubPart
+    + checkpoints: list
+    + createJointsTrajectory(pose: JointPose, duration: float=0.0, timeout: float=30.0, joints_speed=[])
+    + toJSON()
+  }
+
+  class PyiCubCustomCall {
+    + target: str
+    + args: tuple
+    + toJSON()
+  }
+
+  class GazeMotion {
+    + lookat_method: str
+    + checkpoints: list
+    + addCheckpoint(value: list)
+    + toJSON()
+  }
+
+  class iCubFullbodyStep {
+    + name: str
+    + limb_motions: dict
+    + gaze_motion: GazeMotion
+    + custom_calls: list
+    + offset_ms: int
+    + prepare()
+    + createCustomCall(target, args=())
+    + createGazeMotion(lookat_method: str)
+    + createPart(name, robot_part, joints_nr, joints_list, joints_speed)
+    + createLimbMotion(part: iCubPart)
+    + join(step)
+    + toJSON()
+  }
+
+  class iCubFullbodyAction {
+    + name: str
+    + description: str
+    + offset_ms: int
+    + steps: list
+    + wait_for_steps: list
+    + prepare()
+    + addAction(action)
+    + addStep(step: iCubFullbodyStep, wait_for_completed: bool=True)
+    + exportJSONFile(filepath)
+    + toJSON()
+  }
+
+  class TemplateParameter {
+    + name(str)
+    + value()
+    + toJSON()
+    + exportJSONFile(filepath)
+  }
+
+  class iCubActionTemplate {
+    + params: dict
+    + prepare_params()
+    + createParam(name)
+    + getActionDict()
+    + getAction(action_name=None)
+    + getParams()
+    + getParam(name)
+    + setParams(params)
+    + setParam(name, value)
+  }
+
+  class iCubActionTemplateImportedJSON {
+    + setParam(JSON_file)
+  }
+
+  class ActionsManager {
+    - __actions__: dict
+    + addAction(action: iCubFullbodyAction, action_id=None)
+    + deleteAction(action_id: str)
+    + flushActions(name_prefix=None)
+    + importActionsFromModule(module)
+    + getAction(action_id: str)
+    + getActions()
+    + exportActions(path)
+    + importTemplateFromJSONFile(JSON_file)
+    + importTemplateFromJSONDict(JSON_dict)
+    + importTemplateJSONFile(JSON_file)
+  }
+
+  ' Inheritance
+  iCubActionTemplate <|-- iCubActionTemplateImportedJSON
+  iCubFullbodyAction <|-- iCubActionTemplate
+}
+
+' Types from controllers.position
+class "pyicub.controllers.position.JointPose" as JointPose
+class "pyicub.controllers.position.iCubPart" as iCubPart
+
+' Compositions/aggregations
+JointsTrajectoryCheckpoint o-- JointPose
+LimbMotion o-- iCubPart
+LimbMotion *-- JointsTrajectoryCheckpoint
+iCubFullbodyStep *-- LimbMotion
+iCubFullbodyStep o-- GazeMotion
+iCubFullbodyStep o-- PyiCubCustomCall
+iCubFullbodyAction *-- iCubFullbodyStep
+ActionsManager o-- iCubFullbodyAction
+
+@enduml

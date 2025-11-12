@@ -1,0 +1,176 @@
+@startuml 
+
+package "pyicub.fsm" {
+  class FSM {
+    + INIT_STATE: str
+    - _machine_: transitions.extensions.GraphMachine
+    - _states_: list
+    - _transitions_: list
+    - _triggers_: dict
+    - _ordered_triggers_: list
+    - _session_id_: int
+    - _session_count_: int
+    - _states_count_: dict
+    + addState(name, description=None, on_enter_callback=None, on_exit_callback=None)
+    + addTransition(source, dest, trigger, ...)
+    + runStep(trigger, **kargs)
+    + toJSON()
+    + importFromJSONDict(data)
+    + importFromJSONFile(filepath)
+    + draw(filepath)
+  }
+}
+
+package "pyicub.rest — JSON DTOs" {
+  class RESTJSON {
+    + fromJSON(json_dict)
+    + toJSON()
+  }
+  class RESTRobot
+  class RESTApp
+  class RESTTopic
+  class iCubRESTService
+  class RESTService
+
+  RESTJSON <|-- RESTRobot
+  RESTJSON <|-- RESTApp
+  RESTJSON <|-- RESTTopic
+  RESTJSON <|-- iCubRESTService
+  RESTJSON <|-- RESTService
+}
+
+package "pyicub.rest — Server & Manager" {
+  class iCubRESTServer {
+    - _flaskapp_: flask.Flask
+    - _services_: dict
+    - _app_services_: dict
+    - _apps_: dict
+    - _robots_: list
+    - _on_enter_callbacks_: dict
+    - _on_exit_callbacks_: dict
+    + run_forever()
+    + register(robot_name, app_name, target_name, target, target_signature, url)
+    + unregister(robot_name, app_name, target_name, url)
+    + subscribe(topic_uri, on_enter, on_exit)
+    + unsubscribe(topic_uri)
+    + process_target_remote(service)
+  }
+
+  class iCubRESTManager {
+    - _request_manager_: pyicub.requests.iCubRequestsManager
+    - _subscribers_: dict
+    - _requests_: dict
+    - _processes_: dict
+    + register_target(robot_name, app_name, target_name, target, target_signature)
+    + unregister_target(robot_name, app_name, target_name, host, port)
+    + process_target(service)
+    + notify_subscriber(subscriber_url, target_rule, req, input_json)
+    + requests()
+    + processes()
+    + subscribers()
+  }
+
+  iCubRESTServer <|-- iCubRESTManager
+}
+
+package "pyicub.rest — App & Services" {
+  class PyiCubApp {
+    - _request_manager_: pyicub.requests.iCubRequestsManager
+    - _rest_manager_: iCubRESTManager
+    + request_manager
+    + rest_manager
+    + logger
+  }
+
+  class PyiCubRESTfulServer {
+    - __robot_name__: str
+    - __fsm__
+    - __args_template__: dict
+    - __args__: dict
+    + setFSM(fsm: iCubFSM, session_id=0)
+    + getServices()
+    + getArgsTemplate()
+    + getArgs()
+    + setArgs(input_args: dict)
+    + getArg(name: str)
+    + setArg(name: str, value)
+  }
+
+  class iCubRESTApp {
+    - __icub__: pyicub.helper.iCub or None
+    - __action_repository__: str
+    + playAction(action_id: str, wait_for_completed=True)
+    + importActionFromJSONDict(JSON_dict, name_prefix=None)
+    + importActions(path)
+    + flushActions(name_prefix=None)
+    + getActions()
+  }
+
+  class iCubRESTSubscriber {
+    + subscribe_topic(topic_uri, on_enter=None, on_exit=None)
+    + run_forever()
+  }
+
+  class RESTSubscriberFSM {
+    - __server_host__: str
+    - __server_port__: int
+    - __robot_name__: str
+    - __app_name__: str
+    - __triggers__: dict
+    - __root_state__: str
+    - __leaf_states__: list
+    + on_enter_state(...)
+    + on_exit_state(...)
+    + on_enter_fsm(...)
+    + on_exit_fsm(...)
+  }
+
+  PyiCubApp <|-- PyiCubRESTfulServer
+  PyiCubRESTfulServer <|-- iCubRESTApp
+  PyiCubApp <|-- iCubRESTSubscriber
+  iCubRESTSubscriber <|-- RESTSubscriberFSM
+}
+
+package "pyicub.rest — Client" {
+  class PyiCubRESTfulClient {
+    - _host_: str
+    - _port_: int
+    - _rule_prefix_: str
+    + run_target(robot_name, app_name, target_name, ...)
+    + run_target_async(...)
+    + get_fsm(robot_name, app_name)
+    + fsm_runStep(robot_name, app_name, trigger, **kargs)
+    + get_robot_actions(robot_name)
+    + play_action(robot_name, action_id, sync=True)
+    + get_request_info(req_id)
+    + is_request_running(req_id)
+    + wait_until_completed(req_id)
+  }
+}
+
+package "pyicub.rest — FSM extension" {
+  class iCubFSM {
+    - _app_: iCubRESTApp
+    - _actions_: dict
+    + actions
+    + icub
+    + setApp(app: iCubRESTApp)
+    + addAction(action: pyicub.actions.iCubFullbodyAction)
+    + addTemplate(template, template_params: list)
+    + importFromJSONDict(data)
+    + exportJSONFile(filepath)
+  }
+
+  FSM <|-- iCubFSM
+}
+
+' External
+class "transitions.extensions.GraphMachine" <<external>>
+class "flask.Flask" <<external>>
+
+iCubRESTManager o-- "pyicub.requests.iCubRequestsManager"
+PyiCubApp o-- iCubRESTManager
+PyiCubApp o-- "pyicub.requests.iCubRequestsManager"
+iCubRESTApp o-- "pyicub.helper.iCub"
+
+@enduml

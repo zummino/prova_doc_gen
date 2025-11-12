@@ -1,0 +1,90 @@
+@startuml 
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+node "Host Machine" as host {
+  node "UDT Orchestrator\n(main.py process)" as orchestrator {
+    component "Agent\n(libraries/classes/Agent.py)" as AgentC
+    component "Broker\n(libraries/classes/Broker.py)" as BrokerC
+    component "QuantumLeapManager\n(libraries/classes/SubscriptionManager.py)" as QLM
+    component "DigitalTwinManager\n(libraries/classes/DigitalTwinManager.py)" as DTM
+    component "Planner\n(libraries/classes/Planner.py)" as PlannerC
+    component "Simulator (libtraci)\n(libraries/classes/SumoSimulator.py)" as SimulatorC
+    component "DataManager\n(libraries/classes/DataManager.py)" as DataManagerC
+    component "TimescaleManager (psycopg2)\n(libraries/classes/DataManager.py)" as TimescaleC
+    component "MobilityVirtualEnvironment\n(mobilityvenv/MobilityVirtualEnvironment.py)" as MVE
+  }
+
+  node "SUMO" as SUMO {
+    artifact "sumoenv/static" as SUMOStatic
+    artifact "sumoenv/scenarioCollection" as ScenarioCollection
+  }
+
+  node "Django Web App\n(udtBackEnd)" as Django {
+    artifact "udtBackEnd process" as DjangoProc
+  }
+
+  folder "Data Files" as DataFiles {
+    artifact "data/realworlddata/mvenvdata/*.csv" as RealTrafficCSV
+    artifact "data/preprocessing/*.csv, *.xml" as PreprocFiles
+    artifact "fiwareenv/.env" as EnvFile
+  }
+}
+
+node "FIWARE IoT Agent" as IOTA {
+  component "North API\n/iot/services, /iot/devices" as IoTNorth
+  component "South API\n/iot/json" as IoTSouth
+}
+
+node "Context Broker\n(NGSI-LD via ngsildclient)" as CB
+
+node "FIWARE QuantumLeap" as QL
+database "TimescaleDB\nDB=quantumleap" as TSDB
+
+database "MongoDB\nDB=orion-openiot\ncollection=entities" as Mongo
+
+node "Grafana\n:3000" as Grafana
+
+node "Web Browser" as Browser
+
+' Connections inside orchestrator
+MVE -> AgentC : retrievingData()\nmeasurementSending()
+AgentC -> IoTNorth : HTTP GET/POST\nregister services/devices
+AgentC -> IoTSouth : HTTP POST\n/iot/json (measurements)
+AgentC -> BrokerC : updateContext()
+BrokerC -> CB : NGSI-LD API
+
+QLM -> CB : create subscription\n(notification to QL)
+
+TimescaleC -> TSDB : SQL (psycopg2)
+DTM -> PlannerC
+PlannerC -> SUMO : run tools\n(randomTrips.py, routeSampler.py)
+SimulatorC -> SUMO : start via libtraci
+DTM -> ScenarioCollection : write graphs and outputs
+
+' Data inputs
+MVE ..> RealTrafficCSV : read
+orchestrator ..> EnvFile : load ports
+
+' Django web app integrations
+DjangoProc -> Mongo : read devices\n(collection=entities)
+DjangoProc -> ScenarioCollection : serve images
+
+' UI
+Browser --> DjangoProc : HTTP
+Browser --> Grafana : HTTP iframe
+
+' CB to QL and QL to TSDB data path
+CB --> QL : HTTP /v2/notify
+QL --> TSDB : persist observations
+
+note right of EnvFile
+contains:
+- IOTA_NORTH_PORT
+- IOTA_SOUTH_PORT
+- ORIONLD_PORT
+- TIMESCALE_DB_PORT
+- QUANTUMLEAP_PORT
+end note
+
+@enduml

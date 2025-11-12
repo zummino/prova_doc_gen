@@ -1,0 +1,52 @@
+@startuml 
+
+
+node "Host machine" as host {
+  node "Python process: launch_campaign.py" as proc_launch {
+    artifact "launch_campaign.py"
+    component "NumPy / itertools\n(product, array_split)"
+    component "dill.dump(...)"
+    component "byobu/tmux\n(session: qufi, windows: run_#)"
+  }
+
+  folder "Working directory" as workdir {
+    artifact "angle_injections.pickle"
+    artifact "coupling_map.pickle"
+    artifact "circuits.pickle"
+  }
+
+  node "byobu/tmux session: qufi" as tmux {
+    node "tmux window: run_#" as runwin {
+      node "Python process: run.py [worker]" as proc_run {
+        artifact "run.py"
+        node "qufi package" as qufi {
+          component "qufi.injector" as injector
+          component "qufi.circuit_generator" as cirgen
+        }
+        node "External libs" as libs {
+          component "PennyLane\n(qml + devices)" as qml
+          component "Qiskit Aer\n(AerSimulator, NoiseModel)" as aer
+          component "Qiskit providers\n(FakeSantiago, transpile)" as qiskit
+        }
+      }
+    }
+    ' Multiple windows of the same shape are created; each runs a worker process.
+  }
+
+  folder "./tmp" as tmp {
+    artifact "*.p.gz\n(batched results per worker)" as pfiles
+  }
+}
+
+' Orchestration and data flow
+proc_launch --> workdir : write *.pickle\n(angle_injections,\ncoupling_map, circuits)
+proc_launch --> tmux : spawn windows\n(byobu new-window ...)
+
+proc_run --> workdir : read *.pickle
+proc_run -down-> injector : execute(...)\n(pl_insert, pl_insert_df,\npl_inject -> run_circuits)
+injector -right-> qml : qml.device(...), QNode
+injector -right-> aer : AerSimulator, NoiseModel.from_backend(...)
+injector -right-> qiskit : FakeSantiago (default), transpile(...)
+injector --> pfiles : save_results(...)
+
+@enduml

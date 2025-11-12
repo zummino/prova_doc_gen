@@ -1,0 +1,28 @@
+@startuml 
+
+skinparam dpi 160
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+actor "HTTP Client" as client
+
+node "Host (JVM runtime)" as host {
+  node "OpenjobApplication (Spring Boot process)\n[it.disim.univaq.sose.examples.openjob.OpenjobApplication]" as app {
+    component "REST Controllers\n- JobController\n- UserController" as controllers
+    component "Service Layer\n- JobServiceImpl\n- UserServiceImpl\n- CrudServiceImpl" as services
+    component "Spring Data JPA Repositories\n- JobRepository\n- UserRepository\n- CrudRepository" as repos
+    component "JPA Auditing\n- @EnableJpaAuditing\n- AuditingEntityListener\n- DateAudit" as auditing
+  }
+}
+
+database "Relational Database (JPA datasource)\nTables:\n- users, role, job\nJoin tables:\n- user_role, job_user" as db
+
+client -down-> controllers : HTTP/JSON\n(REST endpoints)
+controllers -> services : in-process calls
+services -> repos : in-process calls
+repos --> db : JPA (via JDBC)
+auditing ..> app : enabled at startup
+auditing ..> repos : lifecycle callbacks\n(createdAt, updatedAt)
+
+@enduml

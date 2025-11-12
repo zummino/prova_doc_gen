@@ -1,0 +1,78 @@
+@startuml
+
+skinparam handwritten false
+skinparam shadowing false
+skinparam defaultFontName Courier
+
+actor "User" as user
+
+node "Host Machine" as host {
+  node "Django Web App\nudtBackEnd" as django
+  node "Python Runtime\n(main.py, libraries/*)" as py
+  node "SUMO Engine\n(libtraci, sumo/sumo-gui)" as sumo
+  node "SUMO Tools\n(randomTrips.py, routeSampler.py)" as sumotools
+
+  folder "File System" as fs {
+    folder "sumoenv/" as sumoenv
+    folder "data/realworlddata/" as realworld
+    folder "data/preprocessing/generated/" as gen
+    file "fiwareenv/.env" as envfile
+  }
+}
+
+node "FIWARE Stack Network" as fiware {
+  node "IoT Agent JSON" as iota
+  node "Orion Context Broker" as orion
+  node "QuantumLeap" as ql
+}
+
+database "TimescaleDB\nDB: quantumleap\nport: 5432 (from env)" as ts
+database "MongoDB\nDB: orion-openiot\ncollection: entities\nport: 27017" as mongo
+node "Grafana\nhttp://localhost:3000" as graf
+
+' Web access
+user --> django : HTTP
+
+' Django back-end data access
+django --> mongo : MongoDB TCP 27017
+django --> ts : PostgreSQL TCP 5432
+
+' Python runtime (main.py, simulation, agents)
+py --> iota : HTTP /iot/services\nHTTP /iot/devices\nHTTP /iot/json
+py --> orion : NGSI-LD via ngsildclient
+orion --> ql : Subscription notify\nhttp://fiware-quantumleap:{QUANTUMLEAP_PORT}/v2/notify
+ql --> ts : PostgreSQL
+
+' Simulation and preprocessing
+py --> sumo : libtraci start/close
+py --> sumotools : subprocess (randomTrips.py, routeSampler.py)
+sumo --> sumoenv : write outputs (routes, edgedata, tripinfos)
+py --> gen : read/write processed data (CSV/XML)
+py --> realworld : read opendata (CSV)
+py --> envfile : read ports and settings
+
+' Dashboards
+graf --> ts : read-only
+user ..> graf : embedded iframes in udtBackEnd
+
+' Notes for endpoints and provisioning
+note right of iota
+Northbound: /iot/services, /iot/devices at {IOTA_NORTH_PORT}
+Southbound: /iot/json at {IOTA_SOUTH_PORT}
+end note
+
+note right of orion
+Accessed by app at hostname "localhost", port {ORIONLD_PORT}
+IoT Agent cbroker set to "http://orion:{ORIONLD_PORT}"
+end note
+
+note right of ql
+Notify endpoint: /v2/notify
+end note
+
+note bottom of ts
+SQL views created by main.py:
+- mtopeniot.traffic_view
+- mtopeniot.roadsegm_view
+end note
+@enduml

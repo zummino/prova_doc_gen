@@ -1,0 +1,149 @@
+@startuml 
+
+package "pyicub.utils" {
+  class SingletonMeta <<metaclass>> {
+    + __call__(...)
+  }
+}
+
+package "pyicub.helper" {
+  class iCubSingleton <<metaclass>> {
+    + __call__(...)
+  }
+
+  class iCub {
+    - _position_controllers_: dict
+    - _services_: dict
+    - _gaze_ctrl_
+    - _emo_
+    - _speech_
+    - _face_
+    - _facelandmarks_
+    - _cam_right_
+    - _cam_left_
+    - _attention_
+    - _gpt_
+    - _monitors_: list
+    - _logger_
+    - _request_manager_: pyicub.requests.iCubRequestsManager
+    - _actions_manager_: pyicub.actions.ActionsManager
+    - _action_repository_path_: str
+    - _proxy_host_: str
+    - _icub_parts_: dict
+    - _robot_name_: str
+    + gaze
+    + emo
+    + speech
+    + face
+    + facelandmarks
+    + cam_right
+    + cam_left
+    + attention
+    + gpt
+    + parts
+    + robot_name
+    + actions_manager
+    + request_manager
+    + addAction(action, action_id=None)
+    + deleteAction(action_id: str)
+    + flushActions(name_prefix=None)
+    + importActionFromJSONDict(JSON_dict, name_prefix=None)
+    + playAction(action_id: str, wait_for_completed=True, offset_ms=0.0)
+    + runAction(action, wait_for_completed=True, offset_ms=0.0)
+    + moveGaze(gaze_motion, prefix='', ts_ref=0.0)
+    + movePart(limb_motion, prefix='', ts_ref=0.0)
+    + moveStep(step, prefix='', ts_ref=0.0)
+    + moveSteps(steps, checkpoints, prefix, offset_ms=0.0)
+    + execCustomCall(custom_call, prefix='', ts_ref=0.0)
+    + execCustomCalls(calls, prefix='', ts_ref=0.0)
+    + getPositionController(part)
+    + portmonitor(yarp_src_port, activate_function, callback)
+  }
+
+  class PortMonitor {
+    - _port_: pyicub.core.ports.BufferedReadPort
+    - _activate_: callable
+    - _callback_: callable
+    - _period_: float
+    - _values_: collections.deque
+    - _stop_thread_: bool
+    - _worker_thread_
+    + start()
+    + stop()
+    + worker()
+  }
+
+  iCub ..> "pyicub.controllers.GazeController"
+  iCub ..> "pyicub.controllers.position.PositionController"
+  iCub ..> "pyicub.modules.emotions.emotionsPyCtrl"
+  iCub ..> "pyicub.modules.speech.iSpeakPyCtrl"
+  iCub ..> "pyicub.modules.face.facePyCtrl"
+  iCub ..> "pyicub.modules.faceLandmarks.faceLandmarksPyCtrl"
+  iCub ..> "pyicub.modules.camera.cameraPyCtrl"
+  iCub ..> "pyicub.modules.attention.VisualAttention"
+  iCub ..> "pyicub.modules.llm.iGPT"
+  iCub o-- "pyicub.requests.iCubRequestsManager"
+  iCub o-- "pyicub.actions.ActionsManager"
+  iCub o-- "pyicub.controllers.position.iCubPart"
+  iCub *-- PortMonitor
+}
+
+package "pyicub.requests" {
+  class iCubRequest {
+    + INIT
+    + RUNNING
+    + TIMEOUT
+    + DONE
+    + FAILED
+    + TIMEOUT_REQUEST: float
+    - _req_id_: str
+    - _timeout_: float
+    - _target_: callable
+    - _logger_
+    - _status_: str
+    - _creation_time_: float
+    - _start_time_: float
+    - _end_time_: float
+    - _duration_: float
+    - _exception_: str
+    - _target_executor_
+    - _req_executor_
+    - _future_target_
+    - _future_req_
+    + run(*args, **kwargs)
+    + cancel()
+    + wait_for_completed()
+    + info(): dict
+  }
+
+  class iCubRequestsManager {
+    - _pending_futures_: dict
+    - _req_topics_: dict
+    - _last_req_id_: int
+    - _lock
+    - _logger_
+    - _logging_: bool
+    - _logging_path_: str
+    + create(timeout, target, name='', ts_ref=0.0, prefix='')
+    + run_request(req, wait_for_completed, *args, **kwargs)
+    + join_requests(requests)
+    + join_pending_requests(timeout)
+    + pending_futures
+    + logger
+  }
+
+  iCubRequestsManager ..> iCubRequest : creates/manages
+}
+
+' Metaclass relations
+iCub -[#0000FF,dashed]-> iCubSingleton : metaclass
+iCubRequestsManager -[#0000FF,dashed]-> SingletonMeta : metaclass
+
+' External
+class "concurrent.futures.ThreadPoolExecutor" <<external>>
+class "collections.deque" <<external>>
+
+PortMonitor ..> "pyicub.core.ports.BufferedReadPort"
+iCubRequest ..> "concurrent.futures.ThreadPoolExecutor"
+
+@enduml

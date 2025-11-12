@@ -1,0 +1,15 @@
+@startuml 
+
+
+package "treeco.targets.cpp" {
+  package "standalone" {
+    class AddEmitC <<RewritePattern>> { +get_functions(op:ModuleOp) }
+    class AddMainPass <<ModulePass>> { +apply(ctx, op) }
+  }
+
+  package "transforms" {
+    class target_transform_and_dump <<function>> { }
+  }
+}
+
+@enduml

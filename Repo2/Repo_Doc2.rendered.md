@@ -1,6 +1,5 @@
  
 
-% 1 — System Overview
 # SECTION 1 — System Overview
 
 This repository implements “pyALS‑RF”, a software system that ingests trained decision tree–based classifiers (single DecisionTree or ensemble RandomForest), analyzes and transforms them into exact and approximate hardware accelerators, and evaluates trade‑offs between accuracy and implementation cost. The system provides multiple approximation flows (precision scaling, logic pruning, correlated leaf trimming, modular redundancy), supports multi‑objective optimization, generates synthesizable VHDL HDL together with testbenches, and includes comprehensive evaluation, reporting, and fault‑injection capabilities. It targets both algorithm designers and hardware integrators who need to co‑optimize machine learning inference and digital implementation metrics.
@@ -119,7 +118,6 @@ The repository is organized into coherent modules:
 
 This overview reflects concrete capabilities and interfaces observed in the codebase and establishes a common vocabulary and scope for subsequent architecture views.
 
-% 2 — Architectural Context
 ## 2. Architectural Context
 
 This section describes the system’s external environment as it is evident from the codebase. It clarifies which external systems, libraries, and toolchains are used; what file and programmatic interfaces are exposed; what data sources are read or produced; and who the actors are as they appear in the implementation. No diagrams are provided in this section.
@@ -183,7 +181,6 @@ This section describes the system’s external environment as it is evident from
 - Python integrator/developer:
   - Uses the Python API directly to construct Classifier instances, run flows/optimizations, and generate HDL or analysis artifacts programmatically via the provided modules and context factory (ctx_factory).
 
-% 2.1 — Architectural Context – Use Case Diagram
 # Section 2.1 — Architectural Context – Use Case Diagram
 
 This section presents the system-level use cases of the pyALS-RF toolkit as implemented in the repository. It shows how a primary operator interacts with the flows (precision scaling, pruning, modular redundancy, ALS-based, HDL generation, debugging, fault injection, dataset/model generation) and how external tools and libraries (PyAMOSA, scikit-learn/Joblib, Yosys/GHDL, Git server, file system) participate in these use cases. All use cases are named after the concrete functions and scripts present in the codebase to support straightforward validation by the development team.
@@ -207,7 +204,6 @@ Validation notes. The diagram enumerates every externally-invokable flow and hel
 
 External actors are bound to use cases consistently with the implementation, for example PyAMOSA is used by optimization flows, scikit-learn/Joblib by model training and GREPSK, and Yosys/GHDL by HDL generation and resource/energy estimations. The file system is involved wherever configurations, datasets, or outputs are read or written. The diagram can be verified against the corresponding modules and function names in the repository.
 
-% 3 — Containers
 ## 3. Containers
 
 This section identifies the concrete runtime containers involved when executing this codebase. It focuses on deployable applications, external tools/services, and persistent data stores that the system uses at runtime. Source modules are grouped by the process that hosts them to avoid duplicating implementation details while preserving completeness of responsibilities.
@@ -220,7 +216,6 @@ This section identifies the concrete runtime containers involved when executing 
 | File System Data Store | Persistent storage for inputs/outputs and intermediate artifacts: datasets (CSV), models (.pmml, .joblib), pruning configs and directions (JSON5), Pareto fronts (JSON/JSON5), fault collections (JSON5), indexes (TXT), reports (CSV, PDF), generated HDL trees/projects (VHDL, TCL, scripts). Written and read across flows and generators. | Local filesystem; text/binary files (CSV, JSON5/JSON, PMML, VHDL, TXT, PDF). | File I/O only. |
 | Git Remote Repository (optional) | Remote VCS used by git_updater.py to fetch/pull updates of the repository and its submodules at runtime if invoked. | Git via GitPython (HTTPS/SSH). | Git protocol/HTTPS; network I/O triggered by git_updater.git_updater(). |
 
-% 3.1 — Architecture Overview – Component Diagram
 # Section 3.1 — Architecture Overview – Component Diagram
 
 This section presents the component-level view of the software system as implemented in the repository. The diagram groups Python modules by package and shows their key dependencies and interactions with external libraries and tools. It is derived solely from the provided source code to ensure consistency with the actual implementation. The intent is to help both technical and non-technical stakeholders understand the main building blocks, their responsibilities, and how they collaborate to produce configuration-driven approximation flows, analysis, pruning, and HDL generation.
@@ -577,7 +572,6 @@ Notes for validation:
 - Dependencies reflect explicit imports and calls observed in the source. For example, GREP components depend on Model.Classifier and DecisionTree; HDL generators depend on Model plus pyalslib.YosysHelper; Optimization problems depend on pyamosa and the Model; flows orchestrate configuration parsing, model creation, algorithm execution, and persistence.
 - External components denote third-party libraries and the filesystem/toolchain used by the system as per the imports and usage patterns in the code.
 
-% 4 — Components
 ## 4. Components
 
 This section identifies all internal modules, classes, and public functions grouped by package. For each component, it states its primary responsibility and how it collaborates with others (imports, calls, data exchanged). The intent is to provide a verifiable map between concrete implementation artifacts in the repository and their runtime roles and dependencies. No diagrams are included here.
@@ -741,7 +735,6 @@ This section identifies all internal modules, classes, and public functions grou
 
 
 
-% 5 — Code-Level View
 # Section 5 — Code-Level View
 
 This section maps the system’s architectural elements to concrete source code artifacts, identifies the main program entry points, and summarizes the major modules and their responsibilities. It is intended to help developers and integrators validate that the codebase implements the described architecture and to locate implementation details efficiently.
@@ -1228,7 +1221,6 @@ External dependencies (as used in code): numpy, pandas, sklearn, joblib, scipy, 
 
 This mapping comprehensively covers all modules, classes, and top-level functions present in the repository and ties them back to their architectural roles.
 
-% 5.1 — Class Diagram
 ## SECTION 5.1 — Class Diagram
 
 This section presents the complete static structure of the system as derived from the codebase. The PlantUML class diagram groups classes by module (packages) and captures inheritance, composition/aggregation, and key dependencies among the major subsystems: Model, HDL generators, approximation flows (GREP, GREPSK, LCOR, TMR, PS), configuration parsers, optimization problems, and the scikit integration. External library types (e.g., pyamosa, pyalslib, scikit-learn) are shown as external classes to clarify dependencies without introducing undocumented internals. The diagram is faithful to the implementation and does not introduce elements not present in the source.
@@ -1739,7 +1731,6 @@ The diagram shows:
 
 This class diagram is directly derived from the code and can be validated by inspecting the class definitions, imports, and attribute usage across the modules listed above.
 
-% 6 — Cross-Cutting Concerns
 ## 6. Cross-Cutting Concerns
 
 This section identifies and describes cross-cutting aspects that are implemented across multiple modules of the codebase. The goal is to make implicit systemic mechanisms explicit so that stakeholders can reason about quality attributes such as observability, robustness, performance, and operational concerns. All items below cite concrete code evidence to enable validation by the development team.
@@ -1766,7 +1757,6 @@ This section identifies and describes cross-cutting aspects that are implemented
 | Input/output formats and corrective parsing | JSON5 read/write throughout (e.g., pruning configs, faults, archives); visit_testing.py and faultinj_flow.py include corrective parsing for malformed JSON5-like content | The system favors JSON5 for its comments/tolerance. Some utilities sanitize input archives to handle non-JSON-compliant fragments, improving robustness when consuming external artefacts. |
 | Security posture (absence of authn/z; eval usage) | No authentication/authorization modules; dynamic eval of internally-produced SoP; filesystem writes under configured outdir | The tooling targets offline experiments and HDL generation. There is no authn/z. Security-sensitive patterns include eval of expressions (trusted source), and reading/writing many files from configuration-provided paths. Operators should treat inputs as trusted or add validation to mitigate injection or path traversal risks when exposing as a service. |
 
-% 7 — Quality Attributes and Rationale
 ## 7. Quality Attributes and Rationale
 
 This section analyzes the quality attributes explicitly supported by the implementation. Each attribute is justified with concrete evidence taken from the source code (file paths, classes, methods), explaining the rationale behind the design choices. No statements are speculative; all entries are grounded in the codebase supplied.
@@ -1791,7 +1781,6 @@ This section analyzes the quality attributes explicitly supported by the impleme
 | Accuracy Preservation (baselines and loss) | Baseline accuracies calculated and compared consistently (GREP.evaluate_accuracy, GREPSK/LossBasedGREPSK.baseline/pruned metrics, PS/PsMop baselines, MR_HEU baseline vs approx loss). | All approximation flows gate decisions on measured accuracy deltas, ensuring quality constraints (e.g., max_loss) are respected. |
 | Reproducibility (index dumps and checkpoints) | Flows dump MOP/validation/test indexes and checkpoints (e.g., ps_flow writes mop_indexes.txt/val_indexes.txt; LCOR_AXC saves idx files; AMOSA checkpoint files configured in parsers). | Persisting dataset splits and optimizer checkpoints enables deterministic reruns and cross-validation across different machines and sessions. |
 
-% 8 — Deployment View
 ## 8. Deployment View
 
 This section explains how the software is allocated to infrastructure and which runtime artifacts are produced, as derived strictly from the repository’s code. The system is a Python application that runs as a single-process, single-host toolchain with optional multiprocessing and external EDA tool invocation for HDL generation and analysis. No client–server or distributed deployment is implemented; all flows execute locally, interact with the filesystem, and optionally call external tools through Python bindings.
@@ -1859,7 +1848,6 @@ This section explains how the software is allocated to infrastructure and which 
   - Multiprocessing uses cpu_count() by default and partitions work across cores (Classifier.p_tree and Pools across flows). Memory and CPU allocations are local to the single node
   - Long-running optimizations (pyamosa) use on-disk caches and checkpoint files in outdir subpaths; no shared-state across machines is implemented
 
-% 8.1 — Deployment Diagram
 # Section 8.1 — Deployment Diagram
 
 This section describes the concrete runtime topology of the system as implemented in the codebase. The software runs as a Python process on a single host, orchestrating machine‑learning flows, pruning/heuristics, and HDL generation. Computation is parallelized with multiprocessing and thread pools, while hardware-oriented assets are produced by HDL generators that rely on external EDA toolchains via pyalslib. Inputs and outputs are exchanged exclusively through the local file system (datasets, models, JSON5 configurations, reports, and generated HDL sources). No networked services or distributed components are used.

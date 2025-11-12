@@ -1,0 +1,36 @@
+@startuml
+
+node "Client" as client {
+  artifact "API Consumer" as consumer
+}
+
+node "Host: Application & DB (127.0.0.1)" as host {
+  node "JVM" as jvm {
+    component "GymPortal REST Application" as app <<JAX-RS>>
+    artifact "Resources\nit.univaq.gymportal.resources.rest" as res
+    artifact "Business Services\nit.univaq.gymportal.business.*" as services
+    artifact "Domain Models\nit.univaq.gymportal.model.*" as models
+    artifact "Exceptions & Mapper\nit.univaq.gymportal.exceptions.*" as ex
+    artifact "MySQL Connector/J\n(com.mysql.cj.jdbc.Driver)" as jdbc
+
+    app -- res
+    app -- services
+    app -- ex
+    services ..> jdbc : JDBC
+    services ..> models
+  }
+
+  node "MySQL Server" as mysql {
+    database "gymportal_db" as db
+  }
+}
+
+client --> app : HTTP
+services --> db : TCP 8889 (JDBC)
+
+note right of services
+JDBC URL:
+jdbc:mysql://127.0.0.1:8889/gymportal_db
+user: gymportal
+end note
+@enduml

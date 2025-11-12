@@ -1,0 +1,60 @@
+@startuml 
+
+
+package "treeco.transforms" {
+  package "crown_pad_to_perfect" {
+    class CrownPadTreesPerfect <<RewritePattern>> { }
+    class CrownPadTreesPerfectPass <<ModulePass>> { +apply(ctx, op) }
+  }
+
+  package "crown_prune" {
+    class CrownPruneTrees <<RewritePattern>> { }
+    class CrownPruneTreesPass <<ModulePass>> { +apply(ctx, op, multiple_of_n_trees) }
+  }
+
+  package "crown_quantize" {
+    class QuantizeInput <<RewritePattern>> { }
+    class RoundInput <<RewritePattern>> { }
+    class QuantizeLeaves <<RewritePattern>> { }
+    class CrownQuantizeInputPass <<ModulePass>> { +apply(ctx, op, precision, min_val, max_val) }
+    class CrownRoundInputPass <<ModulePass>> { +apply(ctx, op, precision) }
+    class CrownQuantizeLeavesPass <<ModulePass>> { +apply(ctx, op, precision) }
+  }
+
+  package "crown_voting" {
+    class ConvertToVoting <<RewritePattern>> { }
+    class CrownConvertToVotingClassifierPass <<ModulePass>> { +apply(ctx, op) }
+  }
+
+  package "func_legalize" {
+    class UpdateSignatureFuncOp <<RewritePattern>> { }
+  }
+
+  package "memref_merge_subview" {
+    class FoldMemRefSubViewChain <<RewritePattern>> { }
+    class MergeSubviewSlices <<RewritePattern>> { }
+    class FoldMemRefSubViewChainPass <<ModulePass>> { +apply(ctx, op) }
+  }
+
+  package "memref_quantize_global_index" {
+    class MemrefQuantizeGlobalIndex <<RewritePattern>> { }
+    class MemrefQuantizeGlobalIndexPass <<ModulePass>> { +apply(ctx, op) }
+  }
+
+  package "ml_global_quantize_index" {
+    class MlGlobalQuantizeIndex <<RewritePattern>> { }
+    class MlGlobalQuantizeIndexPass <<ModulePass>> { +apply(ctx, op) }
+  }
+
+  package "prepare_llvm_lowering" {
+    class CCompatibleFunc <<RewritePattern>> { }
+    class PrepareLLVMLoweringPass <<ModulePass>> { +apply(ctx, op) }
+  }
+
+  package "trunk_pad_to_min_depth" {
+    class TrunkPadToMinDepth <<RewritePattern>> { }
+    class TrunkPadToMinDepthPass <<ModulePass>> { +apply(ctx, op, min_depth) }
+  }
+}
+
+@enduml

@@ -1,0 +1,136 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+' External actors and systems
+actor "HTTP Clients" as http_clients
+cloud "YARP Network" as yarp_net
+node "iCub controlboards\n/<robot>/<part>" as robot_boards
+node "iKinGazeCtrl\n/iKinGazeCtrl" as ikin_gaze
+node "Robot Cameras\n/icubSim/cam/<side>/rgbImage:o\n/icub/camcalib/<side>/out" as cameras
+node "FaceLandmarks provider\n/faceLandmarks/landmarks:o\n/faceLandmarks/faces:o" as facelandmarks_srv
+node "Emotions input\n/<robot>/face/emotions/in" as emotions_in
+node "Robot speech RPC\n/<robot>/speech:rpc" as robot_speech_rpc
+node "iSpeak server\n/iSpeak, /iSpeak/rpc" as ispeak_srv
+node "LLM endpoints\n/LLM/rpc:i, /GPT/rpc:i" as llm_srv
+node "Flask Web Server" as flask
+
+' Core
+package "pyicub.core" {
+  [Logger\n(_Logger, YarpLogger, PyicubLogger)] as core_logger
+  [Ports\n(BufferedPort, BufferedReadPort, BufferedWritePort,\nCustomCallback)] as core_ports
+  [RPC\n(RpcClient)] as core_rpc
+}
+
+' Controllers
+package "pyicub.controllers" {
+  [GazeController\n(GazeControllerPolyDriver, GazeController)] as gaze_ctrl
+  [PositionController\n(RemoteControlboard, PositionController,\nICUB_PARTS, iCubPart, JointPose,\nICUB_* constants)] as pos_ctrl
+}
+
+' Modules
+package "pyicub.modules" {
+  [emotionsPyCtrl] as emotions_mod
+  [speechPyCtrl] as speech_mod
+  [iSpeakPyCtrl] as ispeak_mod
+  [facePyCtrl] as face_mod
+  [faceLandmarksPyCtrl] as facelandmarks_mod
+  [cameraPyCtrl] as camera_mod
+  [VisualAttention\n(VisualTarget, VisualAttention)] as attention_mod
+  [LLM\n(iLLM, iGPT)] as llm_mod
+}
+
+' Application and orchestration
+package "pyicub (application layer)" {
+  [iCub Helper\n(iCub, iCubSingleton, PortMonitor)] as icub_helper
+  [Actions\n(JointsTrajectoryCheckpoint, LimbMotion,\nPyiCubCustomCall, GazeMotion, iCubFullbodyStep,\niCubFullbodyAction, TemplateParameter,\niCubActionTemplate, iCubActionTemplateImportedJSON,\nActionsManager)] as actions_mod
+  [FSM base\n(FSM)] as fsm_base
+  [Requests\n(iCubRequest, iCubRequestsManager)] as requests_mod
+  [REST Server & App\n(iCubRESTServer, iCubRESTManager,\nPyiCubApp, PyiCubRESTfulServer, iCubRESTApp,\nrest_service decorator,\niCubRESTSubscriber, RESTSubscriberFSM,\niCubFSM, PyiCubRESTfulClient,\nRESTJSON family: RESTRobot, RESTApp,\nRESTTopic, iCubRESTService, RESTService,\nGenericType)] as rest_mod
+}
+
+' Process entry points
+package "pyicub.proc (entry points)" {
+  [actionizer.py\n(ActionsManager CLI)] as actionizer_proc
+  [fsmizer.py\n(FSMsManager CLI)] as fsmizer_proc
+  [icubapi.py\n(launch iCubRESTApp)] as icubapi_proc
+}
+
+' Utilities and packaging
+package "pyicub.utils & setup" {
+  [utils.py\n(SingletonMeta, JSON I/O, ports, math utils,\nreflection helpers)] as utils_mod
+  [setup.py] as setup_mod
+}
+
+' Relationships — internal wiring
+icub_helper -down-> gaze_ctrl
+icub_helper -down-> pos_ctrl
+icub_helper -down-> emotions_mod
+icub_helper -down-> speech_mod
+icub_helper -down-> ispeak_mod
+icub_helper -down-> face_mod
+icub_helper -down-> facelandmarks_mod
+icub_helper -down-> camera_mod
+icub_helper -down-> attention_mod
+icub_helper -down-> llm_mod
+icub_helper -down-> actions_mod
+icub_helper -down-> requests_mod
+icub_helper -down-> core_logger
+icub_helper -down-> core_ports
+icub_helper -down-> core_rpc
+
+attention_mod -right-> gaze_ctrl : uses IGazeControl via iCub.gaze
+
+' REST exposure and execution flow
+http_clients --> flask
+flask --> rest_mod
+rest_mod -down-> requests_mod : async execution\n(iCubRequest)
+rest_mod -down-> icub_helper : registers and dispatches\nhelper, gaze, speech, emo, camera,\nattention, gpt, actions, fsm
+
+' Controllers to YARP
+gaze_ctrl --> yarp_net
+pos_ctrl --> yarp_net
+core_ports --> yarp_net
+core_rpc --> yarp_net
+emotions_mod --> yarp_net
+speech_mod --> yarp_net
+ispeak_mod --> yarp_net
+face_mod --> yarp_net
+facelandmarks_mod --> yarp_net
+camera_mod --> yarp_net
+llm_mod --> yarp_net
+
+' Concrete YARP peers (as seen in code)
+gaze_ctrl --> ikin_gaze : remote "/iKinGazeCtrl"
+pos_ctrl --> robot_boards : remote "/<robot>/<robot_part>"
+camera_mod <-- cameras : connects from camera ports
+facelandmarks_mod <-- facelandmarks_srv : reads landmarks/faces
+emotions_mod --> emotions_in
+speech_mod --> robot_speech_rpc
+ispeak_mod --> ispeak_srv
+llm_mod --> llm_srv
+
+' Tooling and entrypoints
+actionizer_proc -down-> actions_mod
+fsmizer_proc -down-> rest_mod : FSMsManager export/draw
+icubapi_proc -down-> rest_mod : iCubRESTApp.run_forever()
+
+' Utilities
+utils_mod -down-> rest_mod
+utils_mod -down-> actions_mod
+utils_mod -down-> fsm_base
+utils_mod -down-> requests_mod
+utils_mod -down-> icub_helper
+utils_mod -down-> flask
+
+' Logging
+core_logger -left-> rest_mod
+core_logger -left-> icub_helper
+core_logger -left-> requests_mod
+core_logger -left-> modules
+core_logger -left-> controllers
+
+@enduml

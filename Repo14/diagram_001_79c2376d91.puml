@@ -1,0 +1,95 @@
+@startuml
+left to right direction
+
+actor "run_circuits.py" as RunCircuits
+actor "launch_campaign.py" as LaunchCampaign
+actor "run.py" as RunWorker
+actor "tutorial.py" as Tutorial
+actor "PennyLane" as PL
+actor "Qiskit (Aer/Backends)" as QK
+actor "Filesystem" as FS
+actor "Byobu/Tmux" as TMUX
+
+rectangle "QUFI Toolkit" as System {
+  ' Circuit construction (qufi/circuit_generator.py)
+  usecase "BernsteinVazirani.build_circuit" as UC_BV
+  usecase "DeutschJozsa.build_circuit" as UC_DJ
+  usecase "Grover.build_circuit" as UC_GR
+  usecase "IQFT.build_circuit" as UC_IQFT
+  usecase "Bell.build_circuit" as UC_BELL
+
+  ' Conversion and topology (qufi/injector.py)
+  usecase "convert_qiskit_circuit" as UC_CQK
+  usecase "convert_qasm_circuit" as UC_CQASM
+  usecase "get_qiskit_coupling_map" as UC_CMAP
+
+  ' Fault injection and execution (qufi/injector.py)
+  usecase "pl_insert / pl_generate_circuits\n(single fault U3)" as UC_SF
+  usecase "pl_insert_df\n(double fault U3)" as UC_DF
+  usecase "run_circuits\n(ideal and noisy)" as UC_RUN
+
+  ' Sweeps and orchestration (qufi/injector.py)
+  usecase "execute_over_range" as UC_EOR
+  usecase "execute_over_range_single" as UC_EORS
+  usecase "execute\n(batch)" as UC_EXEC
+
+  ' Persistence and analysis (qufi/injector.py, qufi/results_processing.py)
+  usecase "save_results" as UC_SAVE
+  usecase "read_file / read_results_directory" as UC_READ
+  usecase "process_results / build_DF_newQVF" as UC_PROC
+  usecase "generate_all_statistics\n(plots)" as UC_PLOTS
+
+  ' Campaign launcher (launch_campaign.py)
+  usecase "launch_campaign.py\n(spawn byobu/tmux)" as UC_LAUNCH
+}
+
+' Script-driven interactions
+RunCircuits --> UC_BV
+RunCircuits --> UC_CMAP
+RunCircuits --> UC_EOR
+RunCircuits --> UC_READ
+RunCircuits --> UC_PLOTS
+
+LaunchCampaign --> UC_BV
+LaunchCampaign --> UC_LAUNCH
+
+RunWorker --> UC_EXEC
+
+Tutorial --> UC_BV
+Tutorial --> UC_EORS
+Tutorial --> UC_READ
+
+' External systems used by use cases
+UC_BV --> PL
+UC_DJ --> PL
+UC_GR --> PL
+UC_IQFT --> PL
+UC_BELL --> PL
+
+UC_CQK --> QK
+UC_CQASM --> QK
+UC_CMAP --> QK
+
+UC_SF --> PL
+UC_DF --> PL
+UC_RUN --> PL
+UC_RUN --> QK
+
+' Execution flow relations among use cases
+UC_EOR --> UC_SF
+UC_EOR --> UC_DF
+UC_EOR --> UC_RUN
+UC_EORS --> UC_SF
+UC_EXEC --> UC_SF
+UC_EXEC --> UC_DF
+UC_EXEC --> UC_RUN
+
+' Persistence and analytics
+UC_SAVE --> FS
+UC_READ --> FS
+UC_PLOTS --> FS
+
+' Campaign launcher external integration
+UC_LAUNCH --> FS
+UC_LAUNCH --> TMUX
+@enduml

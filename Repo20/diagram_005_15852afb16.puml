@@ -1,0 +1,142 @@
+@startuml 
+
+package "pyicub.modules.attention" {
+  class VisualTarget {
+    + name: str
+    + callable_position
+    + callable_flush
+    + get_position()
+    + flush()
+  }
+
+  class VisualAttention {
+    - __visual_targets__: dict
+    - tracking_lock
+    - stop_event
+    - gazectrl
+    + targets
+    + add_visual_target(target: VisualTarget)
+    + grid_ellipsoid(P, a, b, c, num_points)
+    + observe_area(P, a, b, c, num_points=10, fixation_time=2.0, lookat_point_timeout=5.0, waitMotionDone=True)
+    + observe_workspace(center, width, depth, ...)
+    + observe_scene(center, width, height, ...)
+    + observe_points(points_list, fixation_time=2.0, ...)
+    + track_moving_point(target, track_duration=10.0, ...)
+    + visual_search_in_workspace(...)
+    + visual_search_in_scene(...)
+    + visual_tracking_scene(...)
+    + visual_tracking_workspace(...)
+    + wait_stable_target(...)
+    - __lock_tracking__()
+    - __release_tracking__()
+    + stop_tracking()
+  }
+}
+
+package "pyicub.modules.camera" {
+  class cameraPyCtrl {
+    - __portImg__: yarp.BufferedPortImageRgb
+    - __portCamera__: str
+    - _proxy_host_: str
+    + getImgRes()
+    + getPort()
+    + getHost()
+    + getURI()
+  }
+}
+
+package "pyicub.modules.emotions" {
+  class emotionsPyCtrl {
+    - __port__: pyicub.core.ports.BufferedWritePort
+    + smile()
+    + eb_smile()
+    + eb_surprised()
+    + surprised()
+    + neutral()
+    + sad()
+    + openingEyes()
+    + closingEyes()
+    + cun()
+    + angry()
+    + evil()
+    + sendCmd(part, emo)
+    + setColor(color)
+    + setBrightness(brightness)
+  }
+}
+
+package "pyicub.modules.face" {
+  class facePyCtrl {
+    - __faceraw_port__: pyicub.core.ports.BufferedWritePort
+    + sendRaw(cmd)
+  }
+}
+
+package "pyicub.modules.faceLandmarks" {
+  class faceLandmarksPyCtrl {
+    - __landmarks__: list
+    - __faces__: int
+    - __port_landmarks__: pyicub.core.ports.BufferedReadPort
+    - __port_faces__: pyicub.core.ports.BufferedReadPort
+    + onRead(bottle)
+    + getLandmark(landmark_index, face_index=0)
+    + getCenterEyes(face_index=0)
+    + onReadFaces(bottle)
+    + getFaces()
+  }
+}
+
+package "pyicub.modules.llm" {
+  class iLLM {
+    - __rpcPort__: pyicub.core.rpc.RpcClient
+    + isValid()
+    + status()
+    + query(text: str)
+    + set_system_prompt(prompt: str)
+    + create_session(session_id: str)
+    + switch_session(session_id: str)
+    + reset_session(session_id: str)
+    + delete_session(session_id: str)
+    + list_sessions()
+    + set_model(model_name: str)
+    + quit()
+  }
+  class iGPT {
+  }
+  iLLM <|-- iGPT
+}
+
+package "pyicub.modules.speech" {
+  class speechPyCtrl {
+    - __port__: pyicub.core.ports.BufferedWritePort
+    + say(something)
+    + setPitch(pitch)
+    + setSpeed(speed)
+    + close()
+  }
+  class iSpeakPyCtrl {
+    - __port__: pyicub.core.ports.BufferedWritePort
+    - __rpcPort__: pyicub.core.rpc.RpcClient
+    + isValid()
+    + say(something, waitActionDone=True)
+    + say_from_file(abs_file_path, wait_action_done=True)
+    + say_from_folder_rnd(abs_folder_path, random_seed=0, wait_action_done=True)
+    + close()
+  }
+}
+
+' Key associations
+VisualAttention o-- VisualTarget : manages
+VisualAttention ..> "pyicub.controllers.GazeController" : uses for gaze
+
+emotionsPyCtrl ..> "pyicub.core.ports.BufferedWritePort"
+facePyCtrl ..> "pyicub.core.ports.BufferedWritePort"
+faceLandmarksPyCtrl ..> "pyicub.core.ports.BufferedReadPort"
+iLLM ..> "pyicub.core.rpc.RpcClient"
+iSpeakPyCtrl ..> "pyicub.core.ports.BufferedWritePort"
+iSpeakPyCtrl ..> "pyicub.core.rpc.RpcClient"
+
+' External
+class "yarp.BufferedPortImageRgb" <<external>>
+
+@enduml

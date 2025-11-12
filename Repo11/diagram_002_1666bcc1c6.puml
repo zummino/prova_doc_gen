@@ -1,0 +1,116 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+actor "User / Analyst" as user
+
+package "Gotor (Go)" {
+  [CLI (cmd/main)] as go_cli
+  [API Server (api)] as go_api
+  [LinkTree Library (linktree)] as go_linktree
+  [Logger (internal/logger)] as go_logger
+  [Config (internal/config)] as go_config
+}
+
+package "TorBot (Python)" {
+  [TorBot CLI Orchestrator (torbot/main.py)] as py_torbot_cli
+  [Modules.API Client (modules/api.py)] as py_api_client
+  [Link IO Orchestration (modules/link_io.py)] as py_linkio
+  [LinkTree (treelib wrapper) (modules/linktree.py)] as py_linktree
+  [NLP Classifier (modules/nlp)] as py_nlp
+  [Info Extractor (modules/info.py)] as py_info
+  [Collector (modules/collect_data.py)] as py_collector
+  [Config / Log / Utils / Validators / Savefile / Updater] as py_support
+}
+
+package "Launcher (Flask)" {
+  [Flask API (app/views.py)] as flask_api
+  [ToolManager (YAML I/O)] as flask_toolmgr
+  [ToolConfig Model] as flask_toolcfg
+  [DockerServices] as flask_docker
+}
+
+package "TorCrawl (Python)" {
+  [torcrawl.py (CLI)] as torcrawl_cli
+  [crawler.py] as torcrawl_crawler
+  [extractor.py] as torcrawl_extractor
+  [checker.py] as torcrawl_checker
+}
+
+package "Frontend (OSINT-Collector)" {
+  [TypeScript Types] as fe_types
+}
+
+package "OSINT-IG (Node)" {
+  [Instagram Utility (osint.js)] as ig_util
+}
+
+' External systems
+cloud "Target Websites (HTTP/HTTPS)" as web_targets
+cloud "Tor Project Check (https://check.torproject.org)" as tor_check
+cloud "Tor SOCKS5 Proxy" as tor_proxy
+cloud "Docker Engine (Local)" as docker_engine
+cloud "ipify (https://api.ipify.org)" as ipify
+cloud "Instagram Endpoints" as instagram_api
+database "Tools Directory (YAML files)" as tools_dir
+folder "Local FS (output, data)" as local_fs
+
+' User interactions
+user --> go_cli : Run CLI / Start server
+user --> py_torbot_cli : Run TorBot CLI
+user --> flask_api : Use /tools, /tools/{tool}, /launch
+user --> torcrawl_cli : Use torcrawl.py commands
+user --> ig_util : Run Node utility
+
+' Gotor relationships
+go_cli --> go_config : Read runtime config (.env)
+go_cli --> go_logger
+go_cli --> go_linktree : Direct crawling (terminal/xlsx/tree outputs)
+go_cli --> go_api : Start HTTP server (optional)
+go_cli --> tor_proxy : Use SOCKS5 (when USE_TOR=true)
+
+go_api --> go_linktree : Build trees, crawl
+go_api --> go_logger
+go_api ..> web_targets : GET website content
+go_api ..> tor_check : GET Tor IP
+go_api ..> go_config : Log level via logger config (indirect, at init)
+
+go_linktree ..> web_targets : GET pages, tokenize
+
+' TorBot relationships
+py_torbot_cli --> py_linkio
+py_linkio --> py_api_client : REST calls to gotor (/tree, /ip, /emails, /phone, /content)
+py_linkio --> py_nlp : Optional classify page content
+py_linkio --> py_linktree : Display/visualize tree from API data
+py_linkio --> local_fs : Save JSON output
+
+py_api_client ..> go_api : HTTP GET to /tree, /ip, /emails, /phone, /content
+py_support ..> local_fs : Data directory handling
+
+py_info --> py_api_client : get_web_content
+py_collector ..> web_targets : requests.get on URLs
+
+' Launcher relationships
+flask_api --> flask_toolmgr : Read YAML tool configs
+flask_api --> flask_toolcfg : Validate features/inputs/render entrypoint
+flask_api --> flask_docker : Pull image & run container
+flask_toolmgr ..> tools_dir : Read {tool}/{tool}.yml
+flask_docker ..> docker_engine : Pull/run/remove images
+flask_api --> local_fs : Write outputs to configured OUTOUT_DIRECTORY
+
+' TorCrawl relationships
+torcrawl_cli --> torcrawl_checker : Check Tor, IP
+torcrawl_cli --> torcrawl_crawler : Crawl target site(s)
+torcrawl_cli --> torcrawl_extractor : Extract pages
+torcrawl_checker ..> ipify : Check external IP
+torcrawl_checker ..> tor_proxy : Ensure Tor running
+torcrawl_crawler ..> web_targets
+torcrawl_extractor ..> web_targets
+torcrawl_cli --> local_fs : Save outputs (links/files)
+
+' OSINT-IG relationships
+ig_util ..> instagram_api
+
+' Frontend types are standalone in this repo
+@enduml

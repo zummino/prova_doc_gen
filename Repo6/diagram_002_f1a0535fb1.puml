@@ -1,0 +1,101 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+actor Client
+
+package "it.disim.univaq.sose.examples.openjob" {
+  component OpenjobApplication as App
+
+  package "controller" {
+    component JobController as JobCtrl <<REST Controller>>
+    component UserController as UserCtrl <<REST Controller>>
+  }
+
+  package "service" {
+    interface "CrudService<E,K>" as ICrudSvc
+    interface "JobService" as IJobSvc
+    interface "UserService" as IUserSvc
+    package "impl" {
+      component "CrudServiceImpl<E,K>" as CrudSvcImpl <<Service>>
+      component "JobServiceImpl" as JobSvcImpl <<Service>>
+      component "UserServiceImpl" as UserSvcImpl <<Service>>
+    }
+  }
+
+  package "repository" {
+    interface "CrudRepository<E,K>" as ICrudRepo
+    component "JobRepository" as JobRepo <<Repository>>
+    component "UserRepository" as UserRepo <<Repository>>
+    interface "JpaRepository" as IJpaRepo <<External Library>>
+  }
+
+  package "model" {
+    component "Job" as JobEnt <<Entity>>
+    component "User" as UserEnt <<Entity>>
+    component "Role" as RoleEnt <<Entity>>
+    component "DateAudit" as DateAudit <<MappedSuperclass>>
+  }
+
+  package "auditing" {
+    component "EnableJpaAuditing" as EnableAud <<Configuration>>
+    component "AuditingEntityListener" as AuditListener <<External Library>>
+  }
+}
+
+Client --> JobCtrl : HTTP JSON
+Client --> UserCtrl : HTTP JSON
+
+JobCtrl --> IJobSvc
+JobCtrl --> IUserSvc
+UserCtrl --> IUserSvc
+
+JobSvcImpl -up-|> IJobSvc
+UserSvcImpl -up-|> IUserSvc
+CrudSvcImpl -up-|> ICrudSvc
+
+JobSvcImpl --> CrudSvcImpl : extends
+UserSvcImpl --> CrudSvcImpl : extends
+
+CrudSvcImpl --> ICrudRepo
+UserSvcImpl --> UserRepo : cast+use
+
+JobRepo -up-|> ICrudRepo
+UserRepo -up-|> ICrudRepo
+ICrudRepo -up-|> IJpaRepo
+
+JobRepo --> JobEnt
+UserRepo --> UserEnt
+
+JobEnt --> DateAudit
+UserEnt --> DateAudit
+RoleEnt --> DateAudit
+
+JobEnt --> UserEnt : createdBy, applicants
+UserEnt --> RoleEnt : roles
+
+App --> EnableAud
+DateAudit --> AuditListener
+
+note right of JobCtrl
+  Endpoints:
+  GET /job
+  GET /job/{id}
+  POST /job
+  PUT /job
+  DELETE /job/{id}
+  GET /job/apply/{username}/{id}
+end note
+
+note right of UserCtrl
+  Endpoints:
+  GET /user
+  GET /user/id/{id}
+  GET /user/username/{username}
+  POST /user
+  PUT /user
+  DELETE /user/id/{id}
+end note
+
+@enduml

@@ -1,0 +1,91 @@
+@startuml 
+
+
+skinparam componentStyle rectangle
+
+package "Model Transformations (TransformationRules)" {
+  component "CIM2PIM.cim2pim" as CIM2PIM
+  component "PIM2PSM.pim2psm" as PIM2PSM
+  component "xmlutils" as XMLUTILS
+  component "transformationutils" as TRUTILS
+  component "constants" as CONSTS
+}
+
+component "main.py" as MAIN
+
+package "ISM Runtime (MDAModelingLevels/04.ISM)" {
+  component Agent
+  component ContextBroker
+  component SubscriptionManager
+  component DigitalTwinManager
+  component DigitalShadowManager
+  component DigitalShadow
+  component RoadShadow
+  component TrafficLoopShadow
+  component SumoSimulator
+  component FeedbackTrafficLight
+  component DigitalTwinHMI
+  component BolognaPhysicalTwin
+  component TrafficLightDataReceiver
+  component TrafficLoopDataProvider
+  component Planner
+  component ScenarioGenerator
+  component DataManager
+  component DataModelManager
+  component DatabaseManager
+  component MongoManager
+  component TimescaleManager
+}
+
+' Orchestration and transformation pipeline dependencies
+MAIN --> XMLUTILS : uses SourceXMLParser/saveToCsv/TargetXMLCreator
+MAIN --> CIM2PIM : uses cim2pimTransformation
+MAIN --> PIM2PSM : uses pim2psmTransformation
+MAIN --> CONSTS  : uses file path constants
+
+CIM2PIM --> TRUTILS
+CIM2PIM --> CONSTS
+
+PIM2PSM --> TRUTILS
+PIM2PSM --> CONSTS
+
+XMLUTILS --> TRUTILS
+
+' ISM runtime dependencies (from attributes/imports)
+Agent --> ContextBroker
+ContextBroker --> SubscriptionManager
+ContextBroker --> Agent
+SubscriptionManager --> ContextBroker
+
+DigitalTwinManager --> FeedbackTrafficLight
+DigitalTwinManager --> SumoSimulator
+DigitalTwinManager --> DigitalShadowManager
+FeedbackTrafficLight --> DigitalTwinManager
+SumoSimulator --> DigitalTwinManager
+DigitalShadowManager --> DigitalTwinManager
+DigitalShadow --> DigitalShadowManager
+
+' Inheritance within ISM runtime
+RoadShadow -|> DigitalShadow
+TrafficLoopShadow -|> DigitalShadow
+MongoManager -|> DatabaseManager
+TimescaleManager -|> DatabaseManager
+
+' Physical twin <> adapters/data IO
+BolognaPhysicalTwin --> TrafficLightDataReceiver
+BolognaPhysicalTwin --> TrafficLoopDataProvider
+TrafficLightDataReceiver --> BolognaPhysicalTwin
+TrafficLoopDataProvider --> BolognaPhysicalTwin
+
+' Planning/simulation loop
+Planner --> ScenarioGenerator
+ScenarioGenerator --> Planner
+
+' Data layer relations
+DatabaseManager --> DataManager
+DataManager --> DataModelManager
+DataManager --> DatabaseManager
+DataModelManager --> DataManager
+
+' HMI exists as standalone in code (no explicit references)
+@enduml

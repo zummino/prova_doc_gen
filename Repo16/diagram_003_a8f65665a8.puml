@@ -1,0 +1,367 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+set namespaceSeparator ::
+
+left to right direction
+
+package "libraries.classes" {
+  class Agent {
+    +agentID: str
+    +hostname: str
+    +brokerPortNumber: int
+    +southPortNumber: int
+    +northPortNumber: int
+    +fiwareService: str
+    +fiwareServicePath: str
+    -cbReference: Broker
+    -cbConnection: external::Client
+    +isServiceGroupRegistered(entity_type)
+    +isDeviceRegistered(device_id)
+    +getServiceGroupKey(entity_type)
+    +serviceGroupRegistration(api_key, entity_type)
+    +measurementRegistration(measure_type, device_id, entity_type, timezone, controlled_asset)
+    +retrievingData(*data, device_id, device_key)
+    +measurementSending(date, timeSlot, flow, coordinates, direction, taz, measure_type, device_key, device_id)
+  }
+
+  class Broker {
+    +portNumber: int
+    +portTemporal: Optional[int]
+    +fiwareService: str
+    +hostname: str
+    -entitiesList: List[Tuple[str,int]]
+    -shadowManagerReference: DigitalShadowManager
+    +createConnection(): external::Client
+    +addEntitiesList(entityType, progressiveNumber)
+    +getEntitiesList(): List[Tuple[str,int]]
+    +displayEntities()
+    +getProgressiveNumber(entityType): int
+    +updateProgressiveNumber(entityType, newNumber)
+    +updateContext(deviceID, date, timeSlot, trafficFlow, coordinates, laneDirection, taz, cbConnection): bool
+    +createRoadSegmentEntity(...)
+    +updateRoadSegmentRelation(rsEntity, roadID, traffiFlowObsID)
+    +createTrafficFlowObsEntity(...)
+    +createRoadEntity(progressiveNumber, roadName)
+    +updateRoadRelation(rEntity, roadSegmentID)
+    +searchEntity(cbConnection, dataSearch, eType): external::Entity
+    +updateFlow(cbConnection, newFlow, date, cEntity, eType, timeslot): bool
+  }
+
+  class ContextUpdateError <<exception>> {
+    +entityType: List[str]
+    +additionalInfo: str
+  }
+  class RoadEntityError <<exception>>
+  class RoadSegmentEntityError <<exception>>
+  class TrafficFlowObservedError <<exception>>
+
+  ContextUpdateError <|-- RoadEntityError
+  ContextUpdateError <|-- RoadSegmentEntityError
+  ContextUpdateError <|-- TrafficFlowObservedError
+
+  class DataManager {
+    +name: str
+    -dbManagersByTypes: Dict[str, List[Any]]
+    +addDBManager(dbManager)
+    +getDBManagerByType(dbType): Any
+    +getDBConnectionByType(dbType)
+  }
+
+  abstract class DBManager {
+    +name: str
+  }
+
+  class TimescaleManager {
+    +connectionString: str
+    +connection: external::PsycopgConnection
+    +cursor: external::PsycopgCursor
+    +dbConnect(host, port, dbname, username, password): (connection, cursor)
+    +retrieveHistoricalDataForTimeslot(timeslot, date, entityType, timecolumn): pd.DataFrame
+    +createView(tableName, viewName, schema="mtopeniot")
+  }
+
+  class MongoDBManager {
+    +client: external::MongoClient
+    +db: external::Database
+    +__init__(connectionString: str, dbName: str)
+  }
+
+  DBManager <|-- TimescaleManager
+  DBManager <|-- MongoDBManager
+  DataManager o-- DBManager
+
+  class Shadow {
+    +name: str
+    +get(attribute): Any
+    +set(attribute, value): void
+    +getAllAttributes(): Dict[str, Any]
+  }
+
+  class ShadowDataProcessor {
+    +df: pd.DataFrame
+    +searchRoad(coordinates, direction: str, deviceID: str): (str,str,str,str)
+    +searchTrafficLoop(deviceID: str, coordinates, direction: str): (str, int)
+  }
+
+  class DigitalShadowManager {
+    +shadowsByTypes: Dict[str, List[Shadow]]
+    +dataProcessor: ShadowDataProcessor
+    +clearShadowData()
+    +addShadow(shadowType, timeSlot, trafficFlow, coordinates, direction, taz, deviceID): Shadow
+    +searchShadow(shadowType, timeSlot, trafficFlow, coordinates, laneDirection, taz, deviceID): Shadow
+    +saveShadowToCSV(shadowType: str, shadow: Shadow)
+  }
+
+  DigitalShadowManager o-- ShadowDataProcessor
+  DigitalShadowManager o-- "0..*" Shadow
+
+  class DigitalTwinManager {
+    +sumoSimulator: Simulator
+    +planner: Planner
+    +dtDataManager: DataManager
+    +simulateBasicScenarioForOneHourSlot(timeslot, date, entityType, totalVehicles, minLoops, congestioned, activeGui=false, timecolumn="timeslot")
+    +configureCalibrateAndRun(dataFilePath, carFollowingModel, macroModelType, tau, parameters, date, timeslot, totalCount=10000)
+    +generateGraphs(scenarioFolder)
+    +showGraphs(scenarioFolder, saveSummary=false)
+  }
+
+  class ScenarioGenerator {
+    +sumoConfiguration: str
+    +sim: Simulator
+    +defineScenarioFolder(congestioned=false): str
+    +generateRoutes(edgefile, folderPath, totalVehicles, minLoops=1, congestioned=false): str
+    +setScenario(routeFilePath=None, manual=false, absolutePath=false)
+    +generateRandomRoute(sumoNetPath, timeSlot)
+    +generateRoute(inputEdgePath, timeSlot, withInitialRoute=true, totalCount=10000)
+  }
+
+  class Planner {
+    +simulator: Simulator
+    +scenarioGenerator: ScenarioGenerator
+    +planBasicScenarioForOneHourSlot(collectedData: pd.DataFrame, entityType: str, totalVehicles, minLoops, congestioned, activeGui=false)
+  }
+
+  class QuantumLeapManager {
+    +containerName: str
+    +cbPort: int
+    +quantumleapPort: int
+    +activeSubscriptions: Dict[str, List[Any]]
+    +createQuantumLeapSubscription(cbConnection: external::Client, entityType: str, attribute: str, description: str)
+  }
+
+  class Simulator {
+    +configurationPath: str
+    +logFile: str
+    +routePath: str
+    +typePath: str
+    +listener: ValueListener
+    +start(activeGui=false, logFilePath=None)
+    +startBasic(activeGui=false)
+    +startCongestioned(activeGui=false)
+    +step(quantity=1)
+    +oneHourStep()
+    +resume()
+    +end()
+    +getRemainingVehicles()
+    +changeRoutePath(routePath: str)
+    +changeTypePath(typePath: str)
+    +changeRouteFilePath(routeFilePath: str)
+    +changeDetectorPath(detectorPath: str)
+    +getVehiclesSummary()
+    +getDetectorList()
+    +getAverageOccupationTime()
+    +getInductionLoopSummary()
+    +findLinkedTLS(detectorID: str)
+    +subscribeToInductionLoop(inductionLoopID, value: str)
+    +checkSubscription()
+    +getTLSList()
+    +checkTLS(tlsID)
+    +setTLSProgram(trafficLightID: str, programID: str, all=false)
+  }
+
+  class ValueListener {
+    +step(t=0): bool
+  }
+
+  class TrafficModeler {
+    +trafficData: pd.DataFrame
+    +macroscopicData: list
+    +sumoNet
+    +simulator: Simulator
+    +modelType: str
+    +date: str
+    +timeSlot: str
+    +changeTimeslot(timeSlot: str)
+    +getMacroscopicModel()
+    +saveTrafficData(outputDataPath: str)
+    +evaluateModel(edge_id: str, confPath: str, outputFilePath: str)
+    +evaluateError(detectedFlowPath: str, outputFilePath: str)
+    +vTypeGeneration(modelType: str, tau: str="1", additionalParam={}): (folder_path, conf_path)
+    +plotModel(result=None)
+    +plotResults(resultFilePath: str)
+    +plotTemporalResults(resultFilePath: str, showImage=true)
+    +plotTemporalResultsAverage(folderPath: str, timeSlotRange: list[int], showImage=true)
+    +compareResults(resultPath: str, y_axis="flow")
+    +evaluateModelwithDetector(detectorFilePath, detectorOutputSUMO: str, outputFilePath: str)
+  }
+}
+
+Agent o-- Broker
+Agent ..> external::Client
+Broker o-- DigitalShadowManager
+Broker ..> external::Entity
+Broker ..> external::Rel
+
+ScenarioGenerator --> Simulator
+Planner o-- ScenarioGenerator
+DigitalTwinManager --> Simulator
+DigitalTwinManager --> Planner
+DigitalTwinManager --> DataManager
+TrafficModeler --> Simulator
+QuantumLeapManager ..> external::Client
+Simulator o-- ValueListener
+
+package "mobilityvenv" {
+  class Device {
+    +devicePartialID: str
+    +deviceType: str
+    +apiKey: str
+  }
+
+  class Sensor {
+    +name: str
+    +sensorType: str
+    -dataCallback
+    +setDataCallback(callback)
+    +sendData(*data, device_id: str, device_key: str)
+  }
+
+  class PhysicalSystemConnector {
+    +partialIdentifier: str
+    +name: str
+    +taz: str
+    -_sensors: List[Sensor]
+    +sensors: list
+    +addSensor(*sensors)
+    +sensorExist(device_partial_id: str): bool
+    +getSensor(device_partial_id: str): Sensor
+    +numberConnectedDevice(): int
+    +saveConnectedDevice(folder)
+  }
+
+  Device <|-- Sensor
+  PhysicalSystemConnector "1" o-- "0..*" Sensor
+  Sensor ..> Agent : dataCallback
+}
+
+package "udtBackEnd.udtApp.forms" {
+  class ConfigForm {
+    +clean()
+  }
+  ConfigForm ..|> external::Form
+}
+
+package "udtBackEnd.udtApp.apps" {
+  class UdtappConfig
+  UdtappConfig ..|> external::AppConfig
+}
+
+package "udtBackEnd.udtApp.models" {
+  class Simulator {
+    +configurationPath: str
+    +routeFilePath: str
+  }
+
+  class Misuration {
+    +entity_id: str
+    +time_index: datetime
+    +trafficflow: int
+  }
+
+  class DeviceID {
+    +id: str
+    +type: str
+    +servicePath: str
+  }
+
+  class Metadata {
+    +observedAt: float
+  }
+
+  class Attribute {
+    +value: dict
+    +type: str
+    +md: Metadata
+    +creDate: float
+    +modDate: float
+  }
+
+  class Device {
+    +_id: DeviceID
+    +attrNames: list[str]
+    +attrs: dict
+    +creDate: float
+    +modDate: float
+    +lastCorrelator: str
+  }
+
+  DeviceID ..|> external::EmbeddedDocument
+  Metadata ..|> external::EmbeddedDocument
+  Attribute ..|> external::EmbeddedDocument
+  Device ..|> external::Document
+}
+
+package "main" {
+  class TerminalSystem {
+    -iotanorth
+    -iotasouth
+    -cbport
+    -timescalePort
+    -quantumleapPort
+    -contextBroker: Broker
+    -cbConnection: external::Client
+    -IoTAgent: Agent
+    -quantumLeapManager: QuantumLeapManager
+    -timescaleManager: TimescaleManager
+    -dataManager: DataManager
+    -configurationPath: str
+    -logFile: str
+    -sumoSimulator: libraries::classes::Simulator
+    -twinPlanner: Planner
+    -twinManager: DigitalTwinManager
+    +runPreprocessingSetup()
+    +setupAndRunSystem()
+    +runCalibrationAndSimulation()
+    +showMenu()
+  }
+
+  TerminalSystem --> Agent
+  TerminalSystem --> Broker
+  TerminalSystem --> QuantumLeapManager
+  TerminalSystem --> TimescaleManager
+  TerminalSystem --> DataManager
+  TerminalSystem --> libraries::classes::Simulator
+  TerminalSystem --> Planner
+  TerminalSystem --> DigitalTwinManager
+}
+
+package "external" {
+  class Client <<external>>
+  class Entity <<external>>
+  class Rel <<external>>
+  class MongoClient <<external>>
+  class Database <<external>>
+  class PsycopgConnection <<external>>
+  class PsycopgCursor <<external>>
+  class Document <<external>>
+  class EmbeddedDocument <<external>>
+  class AppConfig <<external>>
+  class Form <<external>>
+  class StepListener <<external>>
+}
+
+ValueListener ..|> external::StepListener
+
+@enduml

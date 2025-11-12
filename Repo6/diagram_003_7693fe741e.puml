@@ -1,0 +1,211 @@
+@startuml 
+
+' Stereotype styling (optional, keeps ASCII-safe labels)
+skinparam classAttributeIconSize 0
+
+package "it.disim.univaq.sose.examples.openjob" {
+
+  class OpenjobApplication <<SpringBootApplication>> {
+    +main(String[] args): void
+  }
+
+  package controller {
+    class JobController <<RestController>> {
+      -jobService: JobService
+      -userService: UserService
+      +getAllJobs(): org.springframework.http.ResponseEntity<java.util.List<model.Job>>
+      +getJobById(Long id): org.springframework.http.ResponseEntity<model.Job>
+      +createJob(model.Job job): org.springframework.http.ResponseEntity<Void>
+      +updateJob(model.Job job): org.springframework.http.ResponseEntity<Void>
+      +deleteJob(Long id): org.springframework.http.ResponseEntity<Void>
+      +applytoJob(String username, Long id): org.springframework.http.ResponseEntity<Void>
+    }
+
+    class UserController <<RestController>> {
+      -userService: UserService
+      +getAllUsers(): org.springframework.http.ResponseEntity<java.util.List<model.User>>
+      +getUserById(Long id): org.springframework.http.ResponseEntity<model.User>
+      +getUserByUsername(String username): org.springframework.http.ResponseEntity<model.User>
+      +createUser(model.User user): org.springframework.http.ResponseEntity<Void>
+      +updateUser(model.User user): org.springframework.http.ResponseEntity<Void>
+      +deleteUser(Long id): org.springframework.http.ResponseEntity<Void>
+    }
+  }
+
+  package service {
+
+    interface CrudService <E, K> {
+      +findAll(): java.util.List<E>
+      +findById(K key): E
+      +create(E entity): void
+      +update(E entity): void
+      +delete(K key): void
+    }
+
+    interface JobService {
+      ' Inherits all methods via relation to CrudService<Job, Long>
+    }
+
+    interface UserService {
+      ' Inherits all CRUD methods via relation to CrudService<User, Long>
+      +findByUsername(String username): java.util.Optional<model.User>
+    }
+
+    package impl {
+
+      class CrudServiceImpl <E, K> {
+        #repository: repository.CrudRepository<E, K>
+        +findAll(): java.util.List<E>
+        +findById(K key): E
+        +create(E entity): void
+        +update(E entity): void
+        +delete(K key): void
+      }
+
+      class JobServiceImpl <<Service>> {
+        ' No additional members; inherits CRUD behavior
+      }
+
+      class UserServiceImpl <<Service>> {
+        +findByUsername(String username): java.util.Optional<model.User>
+      }
+    }
+  }
+
+  package repository {
+
+    interface CrudRepository <E, K> {
+      ' Extends framework JpaRepository via relation below
+    }
+
+    interface JobRepository <<Repository>> {
+      ' No additional members
+    }
+
+    interface UserRepository <<Repository>> {
+      +findByUsername(String username): java.util.Optional<model.User>
+    }
+  }
+
+  package model {
+
+    package audit {
+      abstract class DateAudit <<@MappedSuperclass>> {
+        -createdAt: java.time.Instant
+        -updatedAt: java.time.Instant
+        +getCreatedAt(): java.time.Instant
+        +setCreatedAt(java.time.Instant createdAt): void
+        +getUpdatedAt(): java.time.Instant
+        +setUpdatedAt(java.time.Instant updatedAt): void
+      }
+    }
+
+    class Role <<@Entity>> {
+      -id: Long
+      -name: String
+      -description: String
+      +getId(): Long
+      +setId(Long id): void
+      +getName(): String
+      +setName(String name): void
+      +getDescription(): String
+      +setDescription(String description): void
+    }
+
+    class User <<@Entity>> {
+      -id: Long
+      -firstname: String
+      -lastname: String
+      -username: String
+      -password: String
+      -email: String
+      -active: boolean
+      -passwordExpired: boolean
+      -roles: java.util.Set<Role>
+      +getId(): Long
+      +setId(Long id): void
+      +getFirstname(): String
+      +setFirstname(String firstname): void
+      +getLastname(): String
+      +setLastname(String lastname): void
+      +getUsername(): String
+      +setUsername(String username): void
+      +getPassword(): String
+      +setPassword(String password): void
+      +getEmail(): String
+      +setEmail(String email): void
+      +isActive(): boolean
+      +setActive(boolean active): void
+      +isPasswordExpired(): boolean
+      +setPasswordExpired(boolean passwordExpired): void
+      +getRoles(): java.util.Set<Role>
+      +setRoles(java.util.Set<Role> roles): void
+    }
+
+    class Job <<@Entity>> {
+      -id: Long
+      -title: String
+      -description: String
+      -createdBy: User
+      -applicants: java.util.Set<User>
+      +getId(): Long
+      +setId(Long id): void
+      +getTitle(): String
+      +setTitle(String title): void
+      +getDescription(): String
+      +setDescription(String description): void
+      +getCreatedBy(): User
+      +setCreatedBy(User createdBy): void
+      +getApplicants(): java.util.Set<User>
+      +setApplicants(java.util.Set<User> applicants): void
+    }
+  }
+}
+
+' External framework type (referenced by CrudRepository)
+package "org.springframework.data.jpa.repository" {
+  interface JpaRepository <E, K> <<framework>>
+}
+
+' ===== Inheritance / Realization (Services and Repos) =====
+service.impl.CrudServiceImpl <|-- service.impl.JobServiceImpl
+service.impl.CrudServiceImpl <|-- service.impl.UserServiceImpl
+
+service.impl.CrudServiceImpl ..|> service.CrudService
+
+service.JobService ..|> service.CrudService
+service.UserService ..|> service.CrudService
+
+repository.CrudRepository <|-- repository.JobRepository
+repository.CrudRepository <|-- repository.UserRepository
+org.springframework.data.jpa.repository.JpaRepository <|-- repository.CrudRepository
+
+' Bind generic specializations (visual hint)
+service.impl.JobServiceImpl ..|> service.JobService
+service.impl.UserServiceImpl ..|> service.UserService
+
+' ===== Inheritance (Models) =====
+model.audit.DateAudit <|-- model.User
+model.audit.DateAudit <|-- model.Role
+model.audit.DateAudit <|-- model.Job
+
+' ===== Field/Usage Associations =====
+controller.JobController o--> service.JobService : uses
+controller.JobController o--> service.UserService : uses
+controller.UserController o--> service.UserService : uses
+
+service.impl.CrudServiceImpl o--> repository.CrudRepository : repository
+
+' UserServiceImpl casts base repository to UserRepository to call findByUsername
+service.impl.UserServiceImpl ..> repository.UserRepository : calls findByUsername(...)
+
+' ===== Domain Relationships =====
+' Job createdBy: Many Job to One User
+model.Job "0..*" --> "1" model.User : createdBy
+
+' Job applicants: Many-to-Many (unidirectional from Job)
+model.Job "0..*" -- "0..*" model.User : applicants
+
+' User roles: Many-to-Many
+model.User "0..*" -- "0..*" model.Role : roles
+@enduml

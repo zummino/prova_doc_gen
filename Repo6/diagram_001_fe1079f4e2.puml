@@ -1,0 +1,37 @@
+@startuml
+
+left to right direction
+
+actor "API Client" as ApiClient
+
+rectangle "Openjob REST API" {
+  usecase "List Users\nGET /user" as UC_ListUsers
+  usecase "Get User by Id\nGET /user/id/{id}" as UC_GetUserById
+  usecase "Get User by Username\nGET /user/username/{username}" as UC_GetUserByUsername
+  usecase "Create User\nPOST /user" as UC_CreateUser
+  usecase "Update User\nPUT /user" as UC_UpdateUser
+  usecase "Delete User\nDELETE /user/id/{id}" as UC_DeleteUser
+
+  usecase "List Jobs\nGET /job" as UC_ListJobs
+  usecase "Get Job by Id\nGET /job/{id}" as UC_GetJobById
+  usecase "Create Job\nPOST /job" as UC_CreateJob
+  usecase "Update Job\nPUT /job" as UC_UpdateJob
+  usecase "Delete Job\nDELETE /job/{id}" as UC_DeleteJob
+  usecase "Apply to Job\nGET /job/apply/{username}/{id}" as UC_ApplyToJob
+}
+
+ApiClient --> UC_ListUsers
+ApiClient --> UC_GetUserById
+ApiClient --> UC_GetUserByUsername
+ApiClient --> UC_CreateUser
+ApiClient --> UC_UpdateUser
+ApiClient --> UC_DeleteUser
+
+ApiClient --> UC_ListJobs
+ApiClient --> UC_GetJobById
+ApiClient --> UC_CreateJob
+ApiClient --> UC_UpdateJob
+ApiClient --> UC_DeleteJob
+ApiClient --> UC_ApplyToJob
+
+@enduml

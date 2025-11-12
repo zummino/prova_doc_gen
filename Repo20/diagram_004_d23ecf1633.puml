@@ -1,0 +1,97 @@
+@startuml 
+
+package "pyicub.core.logger" {
+  abstract class _Logger {
+    - _logging: bool
+    - _logger
+    + disable_logs()
+    + enable_logs()
+    + error(msg)
+    + warning(msg)
+    + debug(msg)
+    + info(msg)
+  }
+
+  class YarpLogger {
+    + getLogger()
+  }
+
+  class PyicubLogger {
+    + getLogger()
+    + configure(logging_level, logging_format, logging_file=False, logging_path='.')
+    + addFileHandler(path)
+    + addStreamHandler(stream=None)
+    .. constants ..
+    + FORMAT
+    + FORMAT_VERBOSE
+    + FORMAT_JSON
+    + LOGGING_LEVEL
+  }
+
+  _Logger <|-- YarpLogger
+  _Logger <|-- PyicubLogger
+
+  note right of YarpLogger
+    If 'yarp' is not available, a conditional
+    fallback class 'YarpLogger(PyicubLogger)' is
+    defined in code. Otherwise YarpLogger wraps
+    yarp.Log and still derives from _Logger.
+  end note
+}
+
+package "pyicub.core.ports" {
+  class CustomCallback {
+    - __user_callback__
+    + onRead(bottle, reader)
+  }
+  class BufferedPort {
+    - __logger__: YarpLogger
+    - __port__: yarp.BufferedPortBottle
+    - __port_name__: str
+    + name
+    + open(port)
+    + read(shouldWait=True)
+    + lastRead()
+    + write(msg, forceStrict=False)
+    + setStrict()
+    + prepare()
+  }
+  class BufferedReadPort {
+    - __port_src__: str
+    + <<ctor>>(port_name, port_src, callback=None)
+  }
+  class BufferedWritePort {
+    - __port_dst__: str
+    + <<ctor>>(port_name, port_dst)
+  }
+
+  BufferedPort <|-- BufferedReadPort
+  BufferedPort <|-- BufferedWritePort
+  CustomCallback ..> BufferedReadPort : used by
+}
+
+package "pyicub.core.rpc" {
+  class RpcClient {
+    - __logger__: YarpLogger
+    - __rpc_client__: yarp.RpcClient
+    - __rpc_client_port_name__: str
+    - __connection_result__
+    + connection_result
+    + execute(cmd): yarp.Bottle
+  }
+}
+
+' External dependencies
+class "yarp.BufferedPortBottle" <<external>>
+class "yarp.Bottle" <<external>>
+class "yarp.BottleCallback" <<external>>
+class "yarp.RpcClient" <<external>>
+class "yarp.Log" <<external>>
+
+CustomCallback -|> "yarp.BottleCallback"
+BufferedPort ..> YarpLogger
+BufferedReadPort ..> CustomCallback : optional
+RpcClient ..> YarpLogger
+RpcClient ..> "yarp.RpcClient"
+
+@enduml

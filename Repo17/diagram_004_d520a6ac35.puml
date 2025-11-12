@@ -1,0 +1,54 @@
+@startuml 
+
+
+' Runtime process hosting the transformation pipeline
+node "main.py process" as proc {
+  artifact "main.py" as mainpy
+
+  ' Loaded modules used by main.py
+  artifact "TransformationRules/constants.py" as constants
+  artifact "TransformationRules/xmlutils.py" as xmlutils
+  artifact "TransformationRules/CIM2PIM/cim2pim.py" as cim2pim
+  artifact "TransformationRules/PIM2PSM/pim2psm.py" as pim2psm
+  artifact "TransformationRules/transformationutils.py" as trutils
+}
+
+' Local filesystem holding inputs and outputs
+node "File System" as fs {
+  ' Input CIM
+  artifact "./MDAModelingLevels/01.CIM/VP_GENERATED_XML/project.xml" as cim_xml
+
+  ' TransformationResults CSVs
+  artifact "./TransformationResults/Classes/imported_cimclasses.csv" as csv_cim_classes
+  artifact "./TransformationResults/Relations/imported_cimrelations.csv" as csv_cim_rels
+  artifact "./TransformationResults/Classes/generated_pimclasses.csv" as csv_pim_classes
+  artifact "./TransformationResults/Relations/generated_pimrelations.csv" as csv_pim_rels
+  artifact "./TransformationResults/Classes/generated_psmclasses.csv" as csv_psm_classes
+  artifact "./TransformationResults/Relations/generated_psmrelations.csv" as csv_psm_rels
+
+  ' Generated M2MT XMLs
+  artifact "./MDAModelingLevels/02.PIM/M2MT_GENERATED_XML/pim.xml" as pim_xml
+  artifact "./MDAModelingLevels/03.PSM/M2MT_GENERATED_XML/psm.xml" as psm_xml
+}
+
+' Module load dependencies within the process
+mainpy ..> constants : import
+mainpy ..> xmlutils  : import
+mainpy ..> cim2pim   : import
+mainpy ..> pim2psm   : import
+mainpy ..> trutils   : import (indirect use by rules)
+
+' File I/O performed by the running process
+proc --> cim_xml        : read (SourceXMLParser)
+proc --> csv_cim_classes: write (saveToCsv)
+proc --> csv_cim_rels   : write (saveToCsv)
+
+proc --> csv_pim_classes: write (saveToCsv)
+proc --> csv_pim_rels   : write (saveToCsv)
+proc --> pim_xml        : write (TargetXMLCreator)
+
+proc --> csv_psm_classes: write (saveToCsv)
+proc --> csv_psm_rels   : write (saveToCsv)
+proc --> psm_xml        : write (TargetXMLCreator)
+
+@enduml

@@ -1,0 +1,75 @@
+@startuml
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+  BorderColor black
+  BackgroundColor lightyellow
+}
+actor Operator as op
+actor "FIWARE IoT Agent" as iota
+actor "Orion-LD Context Broker" as orion
+actor QuantumLeap as ql
+actor SUMO as sumo
+actor TimescaleDB as tsdb
+actor MongoDB as mongo
+actor Grafana as graf
+
+rectangle "Urban Digital Twin (UDT) System" as UDT {
+  usecase "Run data preprocessing" as UC_preproc
+  usecase "Setup physical system\nand register sensors" as UC_setup
+  usecase "Register IoT service group" as UC_regsvc
+  usecase "Register device" as UC_regdev
+  usecase "Stream traffic measurements" as UC_stream
+  usecase "Search/Create digital shadows" as UC_shadow
+  usecase "Update NGSI-LD entities\n(Road, RoadSegment, TrafficFlowObserved)" as UC_update
+  usecase "Create QuantumLeap subscription" as UC_sub
+  usecase "Retrieve historical flows" as UC_hist
+  usecase "Plan SUMO scenario and routes" as UC_plan
+  usecase "Run SUMO simulation" as UC_run
+  usecase "Generate and show graphs" as UC_graphs
+  usecase "Browse simulation results" as UC_browse
+  usecase "List entities" as UC_list
+  usecase "View device details" as UC_detail
+  usecase "Embed device dashboard" as UC_dash
+}
+
+' Operator interactions (CLI and Web UI)
+op -- UC_preproc
+op -- UC_setup
+op -- UC_plan
+op -- UC_run
+op -- UC_graphs
+op -- UC_browse
+op -- UC_list
+op -- UC_detail
+op -- UC_dash
+
+' External service interactions
+iota -- UC_regsvc
+iota -- UC_regdev
+iota -- UC_stream
+
+orion -- UC_update
+orion -- UC_sub
+
+ql -- UC_sub
+
+tsdb -- UC_hist
+
+sumo -- UC_plan
+sumo -- UC_run
+
+mongo -- UC_list
+mongo -- UC_detail
+
+graf -- UC_dash
+
+' Use case relationships
+UC_setup ..> UC_regsvc : include
+UC_setup ..> UC_regdev : include
+UC_update ..> UC_shadow : include
+UC_plan ..> UC_hist : include
+UC_graphs ..> UC_run : extend
+
+@enduml

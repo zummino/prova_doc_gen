@@ -1,0 +1,19 @@
+@startuml 
+
+
+package "treeco.dialects.extended.ml_program" {
+  class Global <<IRDLOperation>> {
+    +sym_name: StringAttr
+    +type: TypeAttribute
+    +is_mutable?: UnitAttr
+    +value?: Attribute
+    +sym_visibility: StringAttr
+  }
+
+  class GlobalLoadConstant <<IRDLOperation>> {
+    +global: SymbolRefAttr
+    +result: (attr type)
+  }
+}
+
+@enduml

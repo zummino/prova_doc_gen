@@ -1,0 +1,122 @@
+@startuml 
+
+rectangle "RobEthiChor Node Set (per namespace)" {
+  component ConnectorNode <<ROS2 Node>>
+  component ContextManagerNode <<ROS2 Node>>
+  component EthicsManagerNode <<ROS2 Node>>
+  component NegotiationManagerNode <<ROS2 Node>>
+  component MissionControllerNode <<ROS2 Node>>
+
+  package "Connector internals" {
+    component FlaskApp <<Flask>>
+  }
+  ConnectorNode *-- FlaskApp
+
+  package "ContextManager internals" {
+    component Analyzer
+    component Monitor
+  }
+  ContextManagerNode *-- Analyzer
+  ContextManagerNode *-- Monitor
+
+  package "EthicsManager internals" {
+    component Planner
+    component Executor
+  }
+  EthicsManagerNode *-- Planner
+  EthicsManagerNode *-- Executor
+
+  package "NegotiationManager internals" {
+    component OfferGenerator
+    component UtilityFunction
+    component NegotiationEngine
+    component EthicalImpactAnalyzer
+  }
+  NegotiationManagerNode *-- OfferGenerator
+  NegotiationManagerNode *-- UtilityFunction
+  NegotiationManagerNode *-- NegotiationEngine
+  NegotiationManagerNode *-- EthicalImpactAnalyzer
+}
+
+' Topics
+component "topic: ethic_profile\n(std_msgs/String)" as T_ethic_profile <<ROS2 Topic>>
+component "topic: user_status\n(std_msgs/String)" as T_user_status <<ROS2 Topic>>
+component "topic: goal\n(std_msgs/String)" as T_goal <<ROS2 Topic>>
+component "topic: current_context\n(std_msgs/String)" as T_current_context <<ROS2 Topic>>
+component "topic: active_profile\n(std_msgs/String)" as T_active_profile <<ROS2 Topic>>
+component "topic: monitored_properties\n(std_msgs/String)" as T_monitored_properties <<ROS2 Topic>>
+component "topic: /negotiation_msgs\n(std_msgs/String)" as T_negotiation_msgs <<ROS2 Topic>>
+
+' Services
+component "srv: user_status_service\n(robethichor_interfaces/UserStatusService)" as S_user_status <<ROS2 Service>>
+component "srv: negotiation\n(robethichor_interfaces/NegotiationService)" as S_negotiation <<ROS2 Service>>
+
+' External actors/resources
+actor "HTTP Clients" as ExtHTTP <<External>>
+component "Context Sensors" as ExtSensors <<External>>
+component "Other Agents\n(using /negotiation_msgs)" as ExtAgents <<External>>
+component "ethical_implication_file\n(JSON, path via param)" as F_implications <<File>>
+component "disposition_activation_file\n(JSON, path via param)" as F_activation <<File>>
+component "Mission Log File\n(path via param)" as F_log <<File>>
+
+' HTTP interactions
+ExtHTTP --> FlaskApp : POST /profile\nPOST /status\nPOST /goal
+
+' Pub/Sub flows
+ConnectorNode --> T_ethic_profile : pub
+ConnectorNode --> T_user_status : pub
+ConnectorNode --> T_goal : pub
+
+T_user_status --> ContextManagerNode : sub
+ContextManagerNode --> T_current_context : pub
+
+T_current_context --> EthicsManagerNode : sub
+T_ethic_profile --> EthicsManagerNode : sub
+EthicsManagerNode --> T_active_profile : pub
+
+T_active_profile --> NegotiationManagerNode : sub
+
+ExtSensors --> T_monitored_properties : pub
+T_monitored_properties --> ContextManagerNode : sub
+
+NegotiationManagerNode --> T_negotiation_msgs : pub
+T_negotiation_msgs --> NegotiationManagerNode : sub
+ExtAgents --> T_negotiation_msgs : pub/sub
+
+' Services connections
+S_user_status --> ContextManagerNode : provides
+NegotiationManagerNode --> S_user_status : client
+
+S_negotiation --> NegotiationManagerNode : provides
+MissionControllerNode --> S_negotiation : client
+
+' MissionController goal sub
+T_goal --> MissionControllerNode : sub
+
+' Files
+F_implications -down-> NegotiationManagerNode : reads at startup
+F_activation -down-> NegotiationManagerNode : reads at startup
+MissionControllerNode -down-> F_log : appends
+
+' Notes
+note right of ConnectorNode
+Parameters:
+- host (default 0.0.0.0)
+- port (default 5000; launch arg "port")
+end note
+
+note right of MissionControllerNode
+Parameter:
+- log_output_file (launch arg)
+end note
+
+note right of NegotiationManagerNode
+Parameters:
+- ethical_implication_file (launch arg)
+- disposition_activation_file (launch arg)
+end note
+
+note right of ContextManagerNode
+Provides latest user status via service
+end note
+@enduml

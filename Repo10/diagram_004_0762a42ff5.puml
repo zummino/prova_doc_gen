@@ -1,0 +1,140 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam defaultTextAlignment center
+skinparam wrapWidth 200
+skinparam shadowing false
+skinparam ArrowColor #555555
+skinparam ArrowThickness 1
+
+title Deployment — ICS Testbed with PLCs, IEDs, Attacker Nodes, SCADA UI, Attack-Graph Tooling
+
+cloud "Subnet 10.0.0.0/24" as net0 {
+  node "M-PLC\nIP: 10.0.0.192" as MPLC {
+    artifact "modbus_server.py (TCP 502)"
+    artifact "main.py (Modbus client/server)"
+  }
+
+  node "M-IED1\nIP: 10.0.0.21" as MIED1 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+
+  node "M-IED2\nIP: 10.0.0.22" as MIED2 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+
+  node "AttackerNode-ARP\nLinux + scapy + NetfilterQueue" as A_ARP {
+    artifact "coilModification.py / coilModificationStealth.py"
+    artifact "iptables FORWARD/OUTPUT -> NFQUEUE 1"
+  }
+}
+
+cloud "Subnet 10.0.1.0/24" as net1 {
+  node "S-PLC\nIP: 10.0.1.45" as SPLC {
+    artifact "modbus_server.py (TCP 502)"
+    artifact "main.py"
+  }
+
+  node "T-PLC\nIP: 10.0.1.61" as TPLC {
+    artifact "modbus_server.py (TCP 502)"
+    artifact "main.py"
+  }
+
+  node "G-PLC\nIP: 10.0.1.93" as GPLC {
+    artifact "modbus_server.py (TCP 502)"
+    artifact "main.py"
+  }
+
+  node "S-IED1\nIP: 10.0.1.34" as SIED1 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+  node "S-IED2\nIP: 10.0.1.35" as SIED2 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+  node "S-IED3\nIP: 10.0.1.36" as SIED3 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+  node "S-IED4\nIP: 10.0.1.37" as SIED4 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+
+  node "T-IED1\nIP: 10.0.1.50" as TIED1 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+  node "T-IED2\nIP: 10.0.1.51" as TIED2 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+  node "T-IED3\nIP: 10.0.1.52" as TIED3 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+
+  node "G-IED1\nIP: 10.0.1.82" as GIED1 {
+    artifact "IED modbus_server.py (TCP 502)"
+    artifact "IED main.py"
+  }
+
+  node "AttackerNode\nLinux + scapy + NetfilterQueue" as A_STD {
+    artifact "coilModification.py / coilModificationStealth.py"
+    artifact "iptables FORWARD/OUTPUT -> NFQUEUE 1"
+  }
+
+  node "Host referenced by filter\nIP: 10.0.1.66" as H1066
+}
+
+node "General-PLC\nIP: unknown" as GPLC_GEN {
+  artifact "modbus_server.py (TCP 502)"
+  artifact "main.py (orchestrator)"
+  artifact "Apache httpd (foreground)"
+}
+
+node "FUXA SCADA UI\nuiPort: 1881\nIP: unknown" as FUXA {
+  artifact "fuxa_appdata/settings.js"
+}
+
+node "Attack-Graph Workstation\nIP: unknown" as MULVAL_HOST {
+  artifact "AttackGraph/genScript.sh"
+  artifact "interaction_rules_def.P"
+  artifact "interaction_rules_doppio.P"
+  artifact "Docker image: wilbercui/mulval"
+}
+
+/' Inter-PLC orchestration from General-PLC '/
+GPLC_GEN -[#2c7]- MPLC : Modbus TCP 502
+GPLC_GEN -[#2c7]- SPLC : Modbus TCP 502
+GPLC_GEN -[#2c7]- TPLC : Modbus TCP 502
+GPLC_GEN -[#2c7]- GPLC : Modbus TCP 502
+
+/' PLC-to-IED field communications '/
+SPLC -[#2c7]-> SIED1 : Modbus TCP 502
+SPLC -[#2c7]-> SIED2 : Modbus TCP 502
+SPLC -[#2c7]-> SIED3 : Modbus TCP 502
+SPLC -[#2c7]-> SIED4 : Modbus TCP 502
+
+TPLC -[#2c7]-> TIED1 : Modbus TCP 502
+TPLC -[#2c7]-> TIED2 : Modbus TCP 502
+TPLC -[#2c7]-> TIED3 : Modbus TCP 502
+
+GPLC -[#2c7]-> GIED1 : Modbus TCP 502
+
+MPLC -[#2c7]-> MIED1 : Modbus TCP 502
+MPLC -[#2c7]-> MIED2 : Modbus TCP 502
+
+/' Attacker interceptions as coded in filters '/
+A_ARP .. MIED1 : NFQUEUE intercept/modify\n(10.0.0.192 <-> 10.0.0.21)
+A_ARP .. MPLC : ARP MITM path
+
+A_STD .. MPLC : NFQUEUE intercept/modify\n(src 10.0.1.66 -> 10.0.0.192)
+A_STD .. H1066 : Outbound Modbus frames
+
+/' Offline analysis host (no runtime ICS links in code) '/
+MULVAL_HOST -[dotted]-> MULVAL_HOST : Docker run "wilbercui/mulval"
+
+@enduml

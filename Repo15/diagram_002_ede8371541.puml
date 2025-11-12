@@ -1,0 +1,124 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+package "Orchestration" {
+  component "main.py" as Main
+}
+
+package "Data Preprocessing" {
+  component "preprocessingSetup.py" as PreSetup
+  component "preprocessingUtils.py" as PreUtils
+}
+
+package "Utilities" {
+  component "generalUtils.py" as GenUtils
+  component "multiThreadingUtils.py" as MTUtils
+  component "constants.py" as Consts
+}
+
+package "Mobility Virtual Environment" {
+  component "MobilityVirtualEnvironment.py" as MVE
+  component "PhysicalSystemConnector.py" as PSC
+}
+
+package "Core Integration" {
+  component "Agent.py" as Agent
+  component "Broker.py" as Broker
+  component "DigitalShadowManager.py" as DSM
+  component "SubscriptionManager.py\n(QuantumLeapManager)" as QLM
+  component "DataManager.py\n(TimescaleManager, MongoDBManager)" as DM
+}
+
+package "Digital Twin Simulation" {
+  component "DigitalTwinManager.py" as DTM
+  component "Planner.py\n(ScenarioGenerator)" as Planner
+  component "SumoSimulator.py\n(Simulator)" as SumoSim
+}
+
+package "Web UI (Django)" {
+  component "udtBackEnd\n(settings.py, urls.py, wsgi/asgi)\nudtApp (models.py, views.py, urls.py, templates, templatetags)" as Django
+}
+
+package "External Systems & Artifacts" {
+  [FIWARE IoT Agent] as IOTA
+  [FIWARE Orion-LD\n(Context Broker)] as Orion
+  [QuantumLeap] as QL
+  [TimescaleDB] as TSDB
+  [MongoDB] as Mongo
+  [SUMO Engine & Tools] as SUMO
+  [SUMO Net XML\n(joined_lanes.net.xml)] as SumoNet
+  [Shadow Types CSV\n(data/digitalshadow/digital_shadow_types.csv)] as ShadowCSV
+  [OpenData CSVs\n(traffic_flow_2024.csv, accuracy_loops_2024.csv)] as Opendata
+  [Scenario Collection FS\n(sumoenv/**/scenarioCollection)] as SCFS
+  [Grafana] as Grafana
+}
+
+' Orchestration
+Main --> Agent
+Main --> Broker
+Main --> QLM
+Main --> MVE
+Main --> DM
+Main --> DTM
+
+' Preprocessing
+PreSetup --> PreUtils
+PreSetup --> Consts
+PreUtils --> Consts
+PreUtils --> Opendata
+PreUtils --> SumoNet
+PreUtils --> ShadowCSV
+PreUtils ..> SUMO : uses tools (routeSampler, randomTrips)
+
+' Core Integration
+DSM --> Consts
+DSM --> ShadowCSV
+Broker --> DSM
+Broker --> Orion : ngsildclient
+Broker --> Consts
+Broker --> GenUtils : convertDate
+
+Agent --> IOTA : North/South REST
+Agent --> Broker : updateContext()
+
+QLM --> Orion : create subscription
+QLM ..> QL : notifications target /v2/notify
+
+DM ..> TSDB : psycopg2
+DM ..> Mongo : pymongo (MongoDBManager)
+
+' Digital Twin Simulation
+DTM --> DM : historical data
+DTM --> Planner
+DTM --> SumoSim
+DTM --> SCFS : write graphs/images
+Planner --> SumoSim
+Planner --> Consts
+Planner --> SumoNet
+Planner ..> SUMO : tools (randomTrips.py, routeSampler.py)
+SumoSim ..> SUMO : libtraci
+
+' Mobility Virtual Environment
+MVE --> PSC
+MVE --> Agent : register + send measurements
+MVE --> GenUtils : readingFiles, processingTlData
+MVE --> Consts
+
+MTUtils --> MVE
+MTUtils --> DTM
+
+' Web UI
+Django ..> Mongo : mongoengine
+Django ..> SCFS : serve scenario images
+Django ..> Grafana : iframe embed
+
+' Data flows via FIWARE
+IOTA --> Orion : measurements forwarded
+Orion --> QL : subscription notifications
+QL --> TSDB : persist time series
+
+@enduml

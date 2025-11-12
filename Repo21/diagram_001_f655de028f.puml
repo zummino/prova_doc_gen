@@ -1,0 +1,69 @@
+@startuml
+
+actor Developer as Dev
+actor "External tool mlir-opt" as MlirOpt
+actor "External tool mlir-translate" as MlirTranslate
+actor "External tool clang" as Clang
+actor "C runtime via ctypes" as CRuntime
+
+package "Frontend" {
+  usecase "Parse ONNX model\n(Parser.parseModel)" as UC_Parse
+  usecase "Generate xdsl IR (onnxml)\n(frontend.ir_gen.ir_gen)" as UC_GenIR
+}
+
+package "Crown/Trunk transforms" {
+  usecase "Crown transform\n(compiler.crown_transform)" as UC_Crown
+  usecase "Trunk transform\n(compiler.trunk_transform)" as UC_Trunk
+  usecase "Root transform\n(compiler.root_transform)" as UC_Root
+}
+
+package "LLVM Target" {
+  usecase "Add main and PrintfToLLVM\n(targets.llvm.standalone.AddLLVMMainPass)" as UC_LLVMMain
+  usecase "Dump to LLVM IR\n(targets.llvm.transforms.dump_to_llvm)" as UC_DumpLLVM
+  usecase "Compile and run\n(targets.llvm.standalone.compile_and_run)" as UC_RunExe
+  usecase "Compile as shared library\n(targets.llvm.library.compile_as_library)" as UC_CompileLib
+  usecase "Run inference via ctypes\n(targets.llvm.library.run_ctype_inference)" as UC_CTypesRun
+}
+
+package "EmitC Target" {
+  usecase "Add main and convert printf\n(targets.cpp.standalone.AddMainPass)" as UC_EmitcMain
+  usecase "Apply EmitC transforms and dump IR\n(targets.cpp.transforms.target_transform_and_dump)" as UC_EmitcDump
+}
+
+package "Utilities" {
+  usecase "Optimize and bufferize with mlir-opt\n(lowering.mlir_opt.mlir_opt_pass,\nutils.dump_ir)" as UC_MLIROpt
+}
+
+Dev --> UC_Parse
+Dev --> UC_GenIR
+Dev --> UC_Crown
+Dev --> UC_Trunk
+Dev --> UC_Root
+Dev --> UC_LLVMMain
+Dev --> UC_DumpLLVM
+Dev --> UC_RunExe
+Dev --> UC_CompileLib
+Dev --> UC_CTypesRun
+Dev --> UC_EmitcMain
+Dev --> UC_EmitcDump
+
+UC_Parse --> UC_GenIR : <<include>>
+UC_GenIR --> UC_Crown : <<include>>
+UC_Crown --> UC_Trunk : <<include>>
+UC_Trunk --> UC_Root : <<include>>
+
+UC_DumpLLVM --> MlirOpt
+UC_EmitcDump --> MlirOpt
+UC_RunExe --> MlirTranslate
+UC_RunExe --> Clang
+UC_CompileLib --> MlirTranslate
+UC_CompileLib --> Clang
+UC_MLIROpt --> MlirOpt
+
+UC_Root --> UC_MLIROpt : <<include>>
+UC_DumpLLVM --> UC_MLIROpt : <<include>>
+UC_EmitcDump --> UC_MLIROpt : <<include>>
+
+CRuntime --> UC_CTypesRun
+
+@enduml

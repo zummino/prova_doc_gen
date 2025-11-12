@@ -1,0 +1,85 @@
+@startuml 
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 80
+
+package "Application Scripts" {
+  [launch_campaign.py] as Launch
+  [run.py] as Worker
+  [run_circuits.py] as SingleRun
+  [tutorial.py] as Tutorial
+}
+
+package "qufi Library" {
+  [qufi.__init__] as QInit
+  [qufi.circuit_generator] as CircuitGen
+  [qufi.injector] as Injector
+  [qufi.results_processing] as ResultsProc
+}
+
+package "External Libraries" {
+  [PennyLane] as PennyLane <<external>>
+  [Qiskit (Aer, Transpile, Fake backend)] as Qiskit <<external>>
+  [NumPy] as NumPy <<external>>
+  [Matplotlib/Seaborn/Pandas] as MSP <<external>>
+  [dill] as Dill <<external>>
+  [NetworkX] as NetX <<external>>
+  [Python Stdlib\n(os, sys, itertools, pickle, gzip,\n datetime, math, multiprocessing)] as PyStd <<external>>
+  [Byobu/Tmux] as Tmux <<external>>
+}
+
+[File System\n(results *.p.gz, pickles, plots)] as FS <<resource>>
+
+' Facade re-exports
+QInit -down-> CircuitGen : re-exports classes
+QInit -down-> Injector : re-exports functions
+QInit -down-> ResultsProc : re-exports functions
+
+' Orchestration scripts use qufi API (via __init__)
+Launch --> QInit
+Worker --> QInit
+SingleRun --> QInit
+Tutorial --> QInit
+
+' Scripts' other dependencies
+Launch --> Dill
+Launch --> PyStd
+Launch --> Tmux
+Launch --> FS : write angle_injections,\n circuits, coupling_map
+
+Worker --> Dill
+Worker --> PyStd
+Worker --> FS : read pickles,\n write results batches
+
+SingleRun --> Qiskit : FakeSantiago backend
+SingleRun --> PyStd
+SingleRun --> FS : read/write results
+
+Tutorial --> PyStd
+Tutorial --> FS : read/write results CSV
+
+' qufi.circuit_generator dependencies
+CircuitGen --> PennyLane
+CircuitGen --> NumPy
+CircuitGen --> PyStd
+
+' qufi.injector dependencies
+Injector --> PennyLane : QNode, transforms,\n devices lightning.qubit,\n qiskit.aer device
+Injector --> Qiskit : AerSimulator, NoiseModel,\n QuantumCircuit, transpile,\n qasm import/export
+Injector --> NumPy
+Injector --> PyStd
+Injector --> FS : save_results (pickle.gz)
+Injector ..> NetX : imported (unused in code)
+
+' qufi.results_processing dependencies
+ResultsProc --> MSP : plotting, dataframes
+ResultsProc --> PyStd
+ResultsProc --> FS : read *.p.gz,\n save plots
+
+' Data flows
+QInit ..> Injector : execute / execute_over_range\n convert_* / get_qiskit_coupling_map
+QInit ..> CircuitGen : build_circuit (various)
+QInit ..> ResultsProc : read_results_directory,\n generate_all_statistics
+
+@enduml

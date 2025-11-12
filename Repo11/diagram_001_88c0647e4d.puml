@@ -1,0 +1,107 @@
+@startuml
+
+actor "OSINT Analyst" as Analyst
+actor "Docker Engine" as Docker
+actor "Tor Network (SOCKS5)" as TorNet
+actor "Target Website" as Web
+actor "Tor Project Check" as TorCheck
+actor "ipify API" as Ipify
+actor "Instagram API" as Instagram
+
+rectangle "GoTor HTTP API (gotor)" as GoTor {
+  usecase "Start Server (--server)\nRunServer(client, port)" as UC_StartServer
+  usecase "Get Tor Exit IP\nGET /ip" as UC_GetIP
+  usecase "Get Website Content\nGET /content?link=" as UC_Content
+  usecase "Build Link Tree\nGET /tree?link=&depth=" as UC_Tree
+  usecase "Extract Emails\nGET /emails?link=" as UC_Emails
+  usecase "Extract Phone Numbers\nGET /phone?link=" as UC_Phones
+}
+
+rectangle "TorBot CLI (torbot)" as TorBot {
+  usecase "Print Tor IP Address" as UC_PrintIP
+  usecase "Print Link Tree (terminal)" as UC_PrintTree
+  usecase "Show/Save Link Tree" as UC_ShowSaveTree
+  usecase "Print/Save Emails" as UC_PrintEmails
+  usecase "Print/Save Phones" as UC_PrintPhones
+  usecase "Classify Webpage (NLP)" as UC_Classify
+  usecase "Collect Data to CSV" as UC_Collect
+  usecase "Run Info Checks (.git, .svn,\nrobots.txt, .htaccess, BTC, meta)" as UC_Info
+}
+
+rectangle "Launcher Service (Flask)" as Launcher {
+  usecase "List Tools\nGET /tools" as UC_ListTools
+  usecase "Get Tool Config\nGET /tools/{tool}" as UC_GetToolCfg
+  usecase "Launch Tool Container\nPOST /launch" as UC_LaunchTool
+}
+
+rectangle "TorCrawl CLI" as TorCrawl {
+  usecase "Crawl Website via Tor" as UC_Crawl
+  usecase "Extract Page(s)" as UC_Extract
+}
+
+rectangle "OSINT-IG (Node)" as OSINTIG {
+  usecase "Get Instagram User Info" as UC_IG_User
+  usecase "Get Following" as UC_IG_Following
+  usecase "Get Followers" as UC_IG_Followers
+  usecase "Get Feed Texts" as UC_IG_FeedText
+  usecase "Get Feed Locations" as UC_IG_FeedLoc
+  usecase "Check Following Scam Flag" as UC_IG_Scam
+}
+
+' Primary user interactions
+Analyst --> UC_StartServer
+Analyst --> UC_PrintIP
+Analyst --> UC_PrintTree
+Analyst --> UC_ShowSaveTree
+Analyst --> UC_PrintEmails
+Analyst --> UC_PrintPhones
+Analyst --> UC_Classify
+Analyst --> UC_Collect
+Analyst --> UC_Info
+Analyst --> UC_ListTools
+Analyst --> UC_GetToolCfg
+Analyst --> UC_LaunchTool
+Analyst --> UC_Crawl
+Analyst --> UC_Extract
+Analyst --> UC_IG_User
+Analyst --> UC_IG_Following
+Analyst --> UC_IG_Followers
+Analyst --> UC_IG_FeedText
+Analyst --> UC_IG_FeedLoc
+Analyst --> UC_IG_Scam
+
+' GoTor external dependencies
+UC_StartServer ..> TorNet : optional via\nSOCKS5 proxy
+UC_GetIP ..> TorCheck : HTTPS GET\nhttps://check.torproject.org/
+UC_Content ..> Web : HTTP GET
+UC_Tree ..> Web : Crawl <a href>\nlinks recursively
+UC_Emails ..> Web : Crawl mailto:\nlinks
+UC_Phones ..> Web : Crawl tel:\nlinks
+
+' TorBot uses GoTor HTTP API
+UC_PrintIP ..> UC_GetIP : uses
+UC_PrintTree ..> UC_Tree : uses
+UC_ShowSaveTree ..> UC_Tree : uses
+UC_PrintEmails ..> UC_Emails : uses
+UC_PrintPhones ..> UC_Phones : uses
+UC_Classify ..> UC_Content : fetch page
+UC_Info ..> UC_Content : fetch page(s)
+
+' Launcher uses Docker Engine
+UC_LaunchTool ..> Docker : pull image,\nrun container
+
+' TorCrawl external dependencies
+UC_Crawl ..> TorNet : via SOCKS5 proxy
+UC_Crawl ..> Web : fetch pages
+UC_Extract ..> Web : fetch page
+UC_Crawl ..> Ipify : optional IP check
+
+' OSINT-IG external dependency
+UC_IG_User ..> Instagram
+UC_IG_Following ..> Instagram
+UC_IG_Followers ..> Instagram
+UC_IG_FeedText ..> Instagram
+UC_IG_FeedLoc ..> Instagram
+UC_IG_Scam ..> Instagram
+
+@enduml

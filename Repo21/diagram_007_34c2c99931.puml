@@ -1,0 +1,18 @@
+@startuml 
+
+
+package "treeco.dialects.extended.tensor" {
+  class ExtractOp <<IRDLOperation>> {
+    +tensor: TensorType
+    +indices: var IndexType
+    +result: element type of tensor
+  }
+  class InsertOp <<IRDLOperation>> {
+    +scalar: (any)
+    +destination: TensorType
+    +indices: var
+    +result: TensorType
+  }
+}
+
+@enduml

@@ -1,0 +1,110 @@
+@startuml 
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+package "JAX-RS Runtime" {
+  package "REST API (resources.rest)" {
+    [AuthRes]
+    [GymRes]
+    [CourseRes]
+    [FeedbackGymRes]
+    [FeedbackCourseRes]
+    [FavoriteRes]
+    [UserRes]
+  }
+
+  package "Providers (exceptions)" {
+    [ServiceExceptionMapper]
+  }
+}
+
+package "Business Services (business)" {
+  [Service (abstract JDBC base)]
+  [UserServiceImpl]
+  [GymServiceImpl]
+  [CourseServiceImpl]
+  [FavoriteGymServiceImpl]
+  [FavoriteCourseServiceImpl]
+  [FeedbackGymServiceImpl]
+  [FeedbackCourseServiceImpl]
+}
+
+package "Domain Model (model)" {
+  [User]
+  [Role]
+  [Gym]
+  [Course]
+  [FeedbackGym]
+  [FeedbackCourse]
+  [FavoriteGym]
+  [FavoriteCourse]
+}
+
+package "Exceptions (exceptions)" {
+  [ServiceException]
+  [ErrorMessage]
+}
+
+package "Security (referenced)" {
+  [Auth (annotation) <<missing in repo>>]
+  [SecurityContext (container-provided)]
+  [JWTHelpers <<missing in repo>>]
+  [JJWT library (io.jsonwebtoken.*)]
+}
+
+package "JDBC & Database" {
+  [JDBC Driver com.mysql.cj.jdbc.Driver]
+  database "MySQL gymportal_db\njdbc:mysql://127.0.0.1:8889/gymportal_db" as MySQL
+}
+
+package "Other" {
+  [GympotalWSEndpoint\n(standalone SOAP launcher)]
+}
+
+' REST -> Services
+AuthRes --> UserServiceImpl : uses
+AuthRes ..> JWTHelpers : issues/refreshes tokens
+AuthRes ..> "JJWT library (io.jsonwebtoken.*)" : parses JWT
+
+GymRes --> GymServiceImpl : uses
+GymRes ..> CourseRes : subresource locator
+GymRes ..> FeedbackGymRes : subresource locator
+
+CourseRes --> CourseServiceImpl : uses
+CourseRes ..> FeedbackCourseRes : subresource locator
+
+FeedbackGymRes --> FeedbackGymServiceImpl : uses
+FeedbackCourseRes --> FeedbackCourseServiceImpl : uses
+
+FavoriteRes --> FavoriteGymServiceImpl : uses
+FavoriteRes --> FavoriteCourseServiceImpl : uses
+FavoriteRes --> UserServiceImpl : uses
+
+UserRes --> UserServiceImpl : uses
+UserRes --> FeedbackGymServiceImpl : uses
+UserRes --> FeedbackCourseServiceImpl : uses
+
+' REST and Services use Model
+(AuthRes, GymRes, CourseRes, FeedbackGymRes, FeedbackCourseRes, FavoriteRes, UserRes) ..> (User, Role, Gym, Course, FeedbackGym, FeedbackCourse, FavoriteGym, FavoriteCourse)
+(UserServiceImpl, GymServiceImpl, CourseServiceImpl, FavoriteGymServiceImpl, FavoriteCourseServiceImpl, FeedbackGymServiceImpl, FeedbackCourseServiceImpl) ..> (User, Role, Gym, Course, FeedbackGym, FeedbackCourse, FavoriteGym, FavoriteCourse)
+
+' Exception flow
+(ServiceExceptionMapper) ..> ErrorMessage : builds response
+(ServiceExceptionMapper) ..> ServiceException : maps from
+(UserServiceImpl, GymServiceImpl, CourseServiceImpl, FavoriteGymServiceImpl, FavoriteCourseServiceImpl, FeedbackGymServiceImpl, FeedbackCourseServiceImpl) ..> ServiceException : throws
+
+' Services -> JDBC -> DB
+(UserServiceImpl, GymServiceImpl, CourseServiceImpl, FavoriteGymServiceImpl, FavoriteCourseServiceImpl, FeedbackGymServiceImpl, FeedbackCourseServiceImpl) --> "Service (abstract JDBC base)" : extends
+"Service (abstract JDBC base)" --> "JDBC Driver com.mysql.cj.jdbc.Driver" : loads
+(UserServiceImpl, GymServiceImpl, CourseServiceImpl, FavoriteGymServiceImpl, FavoriteCourseServiceImpl, FeedbackGymServiceImpl, FeedbackCourseServiceImpl) --> MySQL : SQL via JDBC
+
+' Security relationships
+(AuthRes, GymRes, CourseRes, FeedbackGymRes, FeedbackCourseRes, FavoriteRes, UserRes) ..> "SecurityContext (container-provided)" : role checks
+(GymRes, CourseRes, FeedbackGymRes, FeedbackCourseRes, FavoriteRes, UserRes) ..> "Auth (annotation) <<missing in repo>>" : access control
+
+' Note about SOAP launcher
+[GympotalWSEndpoint\n(standalone SOAP launcher)] ..> "External SOAP endpoint class\n(it.univaq.registeroffice.RegisterOfficeWSEndpoint) <<not in repo>>" : referenced
+
+@enduml

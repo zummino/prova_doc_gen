@@ -1,0 +1,69 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Docker Engine" as Docker
+actor "Linux Netfilter/NFQUEUE" as NFQ
+
+rectangle "ICS Testbed" as System {
+
+  package "General-PLC" {
+    usecase "GP-1: Read local coils 0..9 via 127.0.0.1:502" as GP1
+    usecase "GP-2: Write coils to\nS-PLC(10.0.1.45)[0..3],\nT-PLC(10.0.1.61)[0..2],\nM-PLC(10.0.0.192)[0..1],\nG-PLC(10.0.1.93)[0]" as GP2
+    usecase "GP-3: Read PLC coils and update local coils\nS-PLC read_coils(8,25)->(22,23,24,25)\nT-PLC read_coils(8,17)->(36,37,38)\nM-PLC read_coils(8,9)->(50,51)\nG-PLC read_coils(8,1)->(56)" as GP3
+    usecase "GP-4: Persist S/T/M/G statuses to status.txt" as GP4
+    GP3 -> GP4 : include
+  }
+
+  package "S-PLC (VirtualCodedPLC/S-PLC)" {
+    usecase "S-1: Read local coils 0..3 via 127.0.0.1:502 and write coil 0 to\nIEDs 10.0.1.34/.35/.36/.37" as SP1
+    usecase "S-2: Read IED coil 1 from 10.0.1.34/.35/.36/.37\nand write to local coils 8,16,24,32" as SP2
+  }
+
+  package "T-PLC (VirtualCodedPLC/T-PLC)" {
+    usecase "T-1: Read local coils 0..2 and write coil 0 to\nIEDs 10.0.1.50/.51/.52" as TP1
+    usecase "T-2: Read IED coil 1 from 10.0.1.50/.51/.52\nand write to local coils 8,16,24" as TP2
+  }
+
+  package "M-PLC (VirtualCodedPLC/M-PLC)" {
+    usecase "M-1: Read local coils 0..1 and write coil 0 to\nIEDs 10.0.0.21 and 10.0.0.22" as MP1
+    usecase "M-2: Read IED coil 1 from 10.0.0.21/.22\nand write to local coils 8 and 16" as MP2
+  }
+
+  package "G-PLC (VirtualCodedPLC/G-PLC)" {
+    usecase "G-1: Read local coil 0 and write coil 0 to\nIED 10.0.1.82" as GPCL1
+    usecase "G-2: Read IED coil 1 from 10.0.1.82\nand write to local coil 8" as GPCL2
+  }
+
+  package "IED (generic, multiple instances)" {
+    usecase "IED-1: Loopback: read local coil 0, print and write status.txt;\nwrite same value to local coil 1" as IED1
+  }
+
+  package "AttackGraph (MulVAL tooling)" {
+    usecase "AG-1: Start MulVAL container; copy architecture and rules;\nrun graph_gen.sh with interaction_rules_*.P --nometric" as AG1
+  }
+
+  package "Attacker Nodes" {
+    usecase "AN-0: Insert iptables rules:\n-I FORWARD -j NFQUEUE --queue-num 1\n-A OUTPUT -j NFQUEUE --queue-num 1" as AN0
+
+    package "AttackerNode-ARP" {
+      usecase "AN-1: Modify ModbusPDU05 WriteSingleCoil\nsrc 10.0.0.192 -> dst 10.0.0.21\nset outputValue=0xff00" as AN1
+      usecase "AN-2: Modify ModbusPDU01 ReadCoilsResponse\nsrc 10.0.0.21 -> dst 10.0.0.192\nset coilStatus=0" as AN2
+    }
+
+    package "AttackerNode" {
+      usecase "AN-3: Modify ModbusPDU05 WriteSingleCoil\nsrc 10.0.1.66 -> dst 10.0.0.192\nset outputValue=0" as AN3
+      usecase "AN-4: Modify ModbusPDU01 ReadCoilsResponse\nsrc 10.0.0.192 -> any\nset coilStatus=[1,0]" as AN4
+    }
+  }
+}
+
+' External actor associations evidenced by code
+Docker --> AG1
+NFQ --> AN0
+NFQ --> AN1
+NFQ --> AN2
+NFQ --> AN3
+NFQ --> AN4
+
+@enduml

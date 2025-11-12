@@ -1,0 +1,79 @@
+@startuml 
+
+title RobEthiChor — Deployment Diagram (ROS 2, rclpy)
+
+skinparam componentStyle rectangle
+
+node "Host Machine" as host {
+  node "ROS 2 rclpy Runtime\n(Launch namespace: /{ns})" as ros {
+
+    artifact "/{ns}/connector_node" as connector
+    artifact "/{ns}/context_manager_node" as ctx
+    artifact "/{ns}/ethics_manager_node" as ethic
+    artifact "/{ns}/negotiation_manager_node" as nego
+    artifact "/{ns}/mission_controller_node" as mc
+
+    component "topic: /{ns}/ethic_profile" as t_ethic_profile
+    component "topic: /{ns}/user_status" as t_user_status
+    component "topic: /{ns}/goal" as t_goal
+    component "topic: /{ns}/current_context" as t_current_context
+    component "topic: /{ns}/active_profile" as t_active_profile
+    component "topic: /monitored_properties" as t_monitored_properties
+    component "topic: /negotiation_msgs" as t_negotiation_msgs
+
+    component "service: /{ns}/user_status_service" as s_user_status
+    component "service: /{ns}/negotiation" as s_negotiation
+  }
+
+  artifact "ethical_implication_file" as f_imp
+  artifact "disposition_activation_file" as f_act
+  artifact "mission_log_file" as f_log
+}
+
+' Connector (HTTP gateway -> ROS topics)
+note right of connector
+Embeds Flask HTTP server:
+- POST /profile -> publishes /{ns}/ethic_profile
+- POST /status -> publishes /{ns}/user_status
+- POST /goal   -> publishes /{ns}/goal
+Parameters:
+- host (default "0.0.0.0")
+- port (default 5000)
+end note
+
+' Topic wiring (publish/subscribe)
+connector --> t_ethic_profile : publish
+connector --> t_user_status : publish
+connector --> t_goal : publish
+
+ctx <-- t_user_status : subscribe
+ctx --> t_current_context : publish
+ctx <-- t_monitored_properties : subscribe
+s_user_status <-- ctx : provides
+
+ethic <-- t_ethic_profile : subscribe
+ethic <-- t_current_context : subscribe
+ethic --> t_active_profile : publish
+
+nego <-- t_active_profile : subscribe
+nego --> t_negotiation_msgs : publish
+nego <-- t_negotiation_msgs : subscribe
+s_negotiation <-- nego : provides
+nego ..> s_user_status : client
+nego ..> f_imp : reads on startup
+nego ..> f_act : reads on startup
+
+mc <-- t_goal : subscribe
+mc ..> s_negotiation : client
+mc ..> f_log : append (optional)
+
+' Execution notes
+note bottom
+- Nodes are launched under /{ns} via PushRosNamespace (default "robassistant_1").
+- The topic "/negotiation_msgs" is absolute and not namespaced.
+- negotiation_manager_node and mission_controller_node use MultiThreadedExecutor.
+- context_manager_node subscribes to "/monitored_properties" (publisher not defined in this repo).
+- mission_controller_node parameter "log_output_file" controls optional file logging.
+end note
+
+@enduml

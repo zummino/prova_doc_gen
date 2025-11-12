@@ -1,0 +1,97 @@
+@startuml 
+left to right direction
+
+actor Visitor as AVisitor
+actor "End User (role: utente)" as AUser
+actor "Gym Manager (role: gestore)" as AManager
+
+rectangle "GymPortal REST API" as System {
+  usecase "Register user" as UC_Register
+  usecase "Login (utente)" as UC_LoginUser
+  usecase "Login (gestore)" as UC_LoginManager
+  usecase "Refresh token" as UC_Refresh
+
+  usecase "Browse gyms" as UC_BrowseGyms
+  usecase "Search gyms by region" as UC_SearchGymsRegion
+  usecase "Search gyms by name" as UC_SearchGymsName
+  usecase "View gym details" as UC_ViewGym
+
+  usecase "Browse courses of a gym" as UC_BrowseCourses
+  usecase "Search courses by name within a gym" as UC_SearchCourses
+  usecase "View course details" as UC_ViewCourse
+
+  usecase "Browse feedback for a gym" as UC_BrowseFeedbackGym
+  usecase "Browse feedback for a course" as UC_BrowseFeedbackCourse
+
+  usecase "Create gym" as UC_CreateGym
+  usecase "Update gym" as UC_UpdateGym
+  usecase "Delete gym" as UC_DeleteGym
+
+  usecase "Add course to gym" as UC_CreateCourse
+  usecase "Update course" as UC_UpdateCourse
+  usecase "Delete course" as UC_DeleteCourse
+
+  usecase "Add feedback to gym" as UC_AddFeedbackGym
+  usecase "Update own gym feedback" as UC_UpdateFeedbackGym
+  usecase "Delete own gym feedback" as UC_DeleteFeedbackGym
+
+  usecase "Add feedback to course" as UC_AddFeedbackCourse
+  usecase "Update own course feedback" as UC_UpdateFeedbackCourse
+  usecase "Delete own course feedback" as UC_DeleteFeedbackCourse
+
+  usecase "View user profile by id" as UC_ViewUser
+  usecase "Update own profile" as UC_UpdateUser
+  usecase "Delete own account" as UC_DeleteUser
+
+  usecase "List favorite gyms" as UC_ListFavGyms
+  usecase "Add gym to favorites" as UC_AddFavGym
+  usecase "Remove gym from favorites" as UC_RemoveFavGym
+
+  usecase "List favorite courses" as UC_ListFavCourses
+  usecase "Add course to favorites" as UC_AddFavCourse
+  usecase "Remove course from favorites" as UC_RemoveFavCourse
+
+  usecase "List own gym feedbacks" as UC_ListOwnFeedbackGym
+  usecase "List own course feedbacks" as UC_ListOwnFeedbackCourse
+}
+
+AVisitor --> UC_Register
+AVisitor --> UC_LoginUser
+AVisitor --> UC_LoginManager
+AVisitor --> UC_BrowseGyms
+AVisitor --> UC_SearchGymsRegion
+AVisitor --> UC_SearchGymsName
+AVisitor --> UC_ViewGym
+AVisitor --> UC_BrowseCourses
+AVisitor --> UC_SearchCourses
+AVisitor --> UC_ViewCourse
+AVisitor --> UC_BrowseFeedbackGym
+AVisitor --> UC_BrowseFeedbackCourse
+AVisitor --> UC_ViewUser
+
+AUser --> UC_Refresh
+AUser --> UC_UpdateUser
+AUser --> UC_DeleteUser
+AUser --> UC_ListOwnFeedbackGym
+AUser --> UC_ListOwnFeedbackCourse
+AUser --> UC_AddFeedbackGym
+AUser --> UC_UpdateFeedbackGym
+AUser --> UC_DeleteFeedbackGym
+AUser --> UC_AddFeedbackCourse
+AUser --> UC_UpdateFeedbackCourse
+AUser --> UC_DeleteFeedbackCourse
+AUser --> UC_ListFavGyms
+AUser --> UC_AddFavGym
+AUser --> UC_RemoveFavGym
+AUser --> UC_ListFavCourses
+AUser --> UC_AddFavCourse
+AUser --> UC_RemoveFavCourse
+
+AManager --> UC_Refresh
+AManager --> UC_CreateGym
+AManager --> UC_UpdateGym
+AManager --> UC_DeleteGym
+AManager --> UC_CreateCourse
+AManager --> UC_UpdateCourse
+AManager --> UC_DeleteCourse
+@enduml

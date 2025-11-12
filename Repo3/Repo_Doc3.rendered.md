@@ -1,6 +1,5 @@
  
 
-% 1 — System Overview
 # SECTION 1 — System Overview
 
 This repository implements a self-adaptive Body Sensor Network (SA-BSN) over ROS. It comprises a simulated patient environment, a set of target-system components (six sensors and a central hub), a logging and knowledge repository, and a MAPE-K control loop (monitor, analyze, plan, execute with knowledge). The system runs as multiple ROS nodes that interact through topics and services to generate vital-sign signals, compute fused patient status, observe and persist runtime data, evaluate system-level quality attributes from algebraic models, and adapt the sensors and hub at runtime by issuing reconfiguration commands.
@@ -49,7 +48,6 @@ Support libraries used across the system are fully contained in the repository. 
 
 This overview reflects the implemented code paths only; it documents all executable nodes, their responsibilities, and their communication patterns as defined in the source tree.
 
-% 2 — Architectural Context
 ## 2. Architectural Context
 
 This section describes the external context in which the system operates, as evidenced by the code. It identifies external systems and frameworks, the concrete ROS topics and services used as interfaces, the data sources the system depends on at runtime and for post-run analysis, and the actors explicitly represented in the codebase. The content is limited to elements that are directly observable in the source.
@@ -147,7 +145,6 @@ This section describes the external context in which the system operates, as evi
   - Injector injects runtime uncertainty on configured components.
   - Analyzer (Python) is an offline consumer of the produced log files to compute and visualize performance metrics.
 
-% 2.1 — Architectural Context – Use Case Diagram
 # SECTION 2.1 — Architectural Context – Use Case Diagram
 
 This section presents the architectural context of the Target System (comprising the sensors and the central hub) by depicting its externally observable interactions as a UML Use Case diagram. The diagram is strictly derived from the source code and shows the external ROS nodes and services interacting with the Target System, the use cases they trigger or support, and the main communication mechanisms (topics and services).
@@ -156,7 +153,6 @@ Figure: Architectural Context — Target System Use Cases
 
 ![diagram_001_92bbc85f3b](diagram_001_92bbc85f3b.png)
 
-% 3 — Containers
 ## 3. Containers
 
 This section identifies every runtime container present in the codebase and describes its responsibility, the principal technologies used, and the concrete ROS communication endpoints (topics and services). Containers correspond to build-and-run units such as ROS nodes, CLI tools, and the file-based data store used at runtime. Note that two engine executables declare the same ROS node name ("engine") and are therefore intended to run alternatively or with remapped names. Also, the enactor/apps/enactor.cpp entry would instantiate an abstract class and is therefore not runnable; the concrete enactor is the Controller.
@@ -182,7 +178,6 @@ This section identifies every runtime container present in the codebase and desc
 | analyzer (Analyzer.py) | Offline analysis of cost/reliability logs; computes stability, settling time, overshoot, etc., and plots time series | Python 3, matplotlib | Reads CSV logs from knowledge_repository/resource/logs; no ROS endpoints |
 | knowledge_repository logs (file store) | Persistent storage of event, status, energy status, uncertainty, and adaptation CSV logs | Filesystem (CSV) | Written by data_access (flush to event_*.log, status_*.log, energystatus_*.log, uncertainty_*.log, adaptation_*.log). Read by analyzer |
 
-% 3.1 — Architecture Overview – Component Diagram
 # SECTION 3.1 — Architecture Overview – Component Diagram
 
 This section presents a complete component view of the Self-Adaptive Body Sensor Network (SA-BSN) system as implemented in the repository. The diagram shows the runtime ROS nodes (components), their responsibilities, and the concrete interactions via ROS topics and services. It covers the target system (sensors and central hub), environment, system manager (adaptation engines and enactor), logging and knowledge repository, probes and effectors, and simulation tooling. All topics and services are named exactly as they appear in the code to support validation.
@@ -197,7 +192,6 @@ The diagram can be validated directly against the codebase:
 - All runtime nodes defined by main entry points are included: PatientModule, G3T1_1..G3T1_6, G4T1, Probe, Logger, DataAccess, ReliabilityEngine, CostEngine, Enactor (Controller), ParamAdapter, Injector. Analyzer.py is included as an off-line consumer of the log files produced by DataAccess.
 - The control loop is explicit: engines calculate strategy based on DataAccess queries; Enactor applies strategy by issuing AdaptationCommand via Logger to ParamAdapter, which routes to component-specific reconfigure topics after EffectorRegister handshakes; components respond by adjusting frequency or replicate_collect as implemented.
 
-% 4 — Components
 ## 4. Components
 
 This section enumerates and explains the internal components implemented in the codebase, grouped by container. For each component, it describes its responsibility and the primary collaborations and dependencies it has with other components, including message topics, services, function calls, and libraries. The list reflects the concrete implementation observed in the source code and is exhaustive for the provided repository.
@@ -324,7 +318,6 @@ This section enumerates and explains the internal components implemented in the 
 
 This completes the inventory of implemented components and their concrete interactions as derived from the source code.
 
-% 5 — Code-Level View
 # Section 5 — Code-Level View
 
 This section documents how the source code realizes the architectural components identified for the self-adaptive Body Sensor Network (SA-BSN). It maps each architectural element to concrete code elements, highlights all executable entry points, and explains the main modules, submodules, and their responsibilities. It also characterizes the recognizable design patterns present in the implementation. The content is derived strictly from the supplied codebase and is intended to be verifiable by developers familiar with it.
@@ -683,7 +676,6 @@ libbsn has extensive unit tests covering configuration, filters, generator, goal
 
 This mapping captures the complete set of components and their corresponding code artifacts, providing a verifiable code-level view of the system.
 
-% 5.1 — Class Diagram
 # Section 5.1 — Class Diagram
 
 This section presents a consolidated static class view of the core implementation across the architecture library (archlib), the Self-Adaptive BSN runtime (sa-bsn), and the supporting BSN model library (libbsn). The diagram focuses on inheritance hierarchies and the principal associations that are explicitly implemented in the codebase. It allows stakeholders to validate how runtime nodes, engines, enactors, target-system components, and supporting model entities relate and depend on each other. All classes, methods, and relationships shown are derived directly from the provided source code without any additions.
@@ -692,7 +684,6 @@ Figure 5-1 — Core Classes and Relationships (section-5-1-class-diagram.puml)
 
 ![diagram_003_cbd6ec8304](diagram_003_cbd6ec8304.png)
 
-% 6 — Cross-Cutting Concerns
 ## 6. Cross-Cutting Concerns
 
 This section identifies and explains cross-cutting concerns implemented across the codebase. The analysis is grounded in code artifacts and demonstrates how non-functional requirements and system-wide mechanisms are addressed. The coverage includes security, logging, configuration management, error handling, testing, monitoring/observability, reconfiguration, graceful shutdown, messaging patterns, time and scheduling, resource accounting, and input validation. All statements below are backed by specific code references so the development team can validate the findings.
@@ -717,7 +708,6 @@ This section identifies and explains cross-cutting concerns implemented across t
 
 
 
-% 7 — Quality Attributes and Rationale
 ## 7. Quality Attributes and Rationale
 
 This section summarizes the principal quality attributes that the codebase demonstrably supports. Each attribute is justified by direct evidence from the implementation (class structure, control flows, message types, parameters, and tests) and a concise rationale linking design choices to the attribute. The intent is to enable validation by developers who can trace each claim to the referenced files, classes, and methods.
@@ -743,7 +733,6 @@ Notes for maintainability validation by the team:
 - Exception-to-status patterns are consistent: failures are observable via Status and subsequently factored into reliability, as seen in DataAccess::receivePersistMessage and calculateComponentReliability.
 - A few correctness issues detectable in code review merit backlog items: Component::reconfigure recursively calls itself (Component.cpp), and ROSComponentDescriptor::operator= lacks a return statement (ROSComponentDescriptor.cpp). These do not undermine the stated qualities but should be fixed to avoid undefined behavior.
 
-% 8 — Deployment View
 ## 8. Deployment View
 
 This section explains how the software elements in the repository are deployed as runtime processes (ROS nodes and scripts), what they publish/subscribe or expose as services, and how they interconnect at runtime. Details are derived strictly from the implementation. No infrastructure diagram is provided here; instead, a verifiable list of deployable artefacts, their execution context, and the inter-node dependencies is presented.
@@ -957,7 +946,6 @@ This section explains how the software elements in the repository are deployed a
 
 These allocations and interactions reflect the precise runtime behavior encoded in the codebase and can be validated by observing ROS topic/services lists (rostopic/rosservice) and the log files produced under knowledge_repository/resource/logs.
 
-% 8.1 — Deployment Diagram
 # Section 8.1 — Deployment Diagram
 
 This section provides the concrete deployment view of the SA-BSN system as implemented in the repository. Each runtime ROS node is represented as a deployment node. Inter-node communications are shown as topic or service connectors using the exact names from the source code. The diagram covers every executable in the codebase, all interacting topics, and all services observable from the code, without introducing any external or inferred elements.

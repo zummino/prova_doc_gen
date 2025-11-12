@@ -1,0 +1,30 @@
+@startuml 
+
+
+package "treeco.dialects.onnxml" {
+  class TreeEnsembleClassifier <<IRDLOperation>> {
+    +buffer_in: MemRefType
+    +buffer_out: MemRefType
+    +classlabels_int64s?: ArrayAttr[IntegerAttr]
+    +classlabels_strings?: ArrayAttr[StringAttr]
+    +class_ids: ArrayAttr[IntegerAttr]
+    +class_treeids: ArrayAttr[IntegerAttr]
+    +class_weights: ArrayAttr[FloatAttr]
+    +class_nodeids: ArrayAttr[IntegerAttr]
+    +nodes_*: ArrayAttr[...]
+    +post_transform: StringAttr
+    +base_values?: ArrayAttr[FloatAttr]
+  }
+
+  class TreeEnsembleRegressor <<IRDLOperation>> {
+    +buffer_in: MemRefType
+    +buffer_out: MemRefType (result)
+    +base_values?: ArrayAttr[FloatAttr]
+    +n_targets: IntegerAttr
+    +nodes_*: ArrayAttr[...]
+    +post_transform: StringAttr
+    +target_*: ArrayAttr[...]
+  }
+}
+
+@enduml

@@ -1,0 +1,125 @@
+@startuml
+
+' Packages reflect file structure for clarity
+package "MDAModelingLevels.04.ISM" as ISM {
+  class Agent {
+    - _northbound_traffic: ContextBroker
+  }
+
+  class BolognaPhysicalTwin {
+    - _unnamed_TrafficLightDataReceiver_: list
+    - _unnamed_TrafficLoopDataProvider_: list
+  }
+
+  class ContextBroker {
+    - _subscriptions: SubscriptionManager
+    - _southbound_traffic: Agent
+  }
+
+  class DatabaseManager {
+    - _unnamed_DataManager_: DataManager
+  }
+
+  class DataManager {
+    - _unnamed_DataModelManager_: DataModelManager
+    - _unnamed_DatabaseManager_: DatabaseManager
+  }
+
+  class DataModelManager {
+    - _unnamed_DataManager_: DataManager
+  }
+
+  class DigitalShadow {
+    - _unnamed_DigitalShadowManager_: DigitalShadowManager
+  }
+
+  class DigitalShadowManager {
+    - _unnamed_DigitalTwinManager_: DigitalTwinManager
+    - _unnamed_DigitalShadow_: list
+  }
+
+  class DigitalTwinHMI
+
+  class DigitalTwinManager {
+    - _unnamed_FeedbackTrafficLight_: FeedbackTrafficLight
+    - _unnamed_SumoSimulator_: SumoSimulator
+    - _unnamed_DigitalShadowManager_: DigitalShadowManager
+  }
+
+  class FeedbackTrafficLight {
+    - _unnamed_DigitalTwinManager_: list
+  }
+
+  class MongoManager
+  class Planner {
+    - _unnamed_ScenarioGenerator_: ScenarioGenerator
+  }
+
+  class RoadShadow
+  class ScenarioGenerator {
+    - _unnamed_Planner_: Planner
+  }
+
+  class SubscriptionManager {
+    - _unnamed_ContextBroker_: ContextBroker
+  }
+
+  class SumoSimulator {
+    - _unnamed_DigitalTwinManager_: DigitalTwinManager
+  }
+
+  class TimescaleManager
+  class TrafficLightDataReceiver {
+    - _unnamed_BolognaPhysicalTwin_: BolognaPhysicalTwin
+  }
+
+  class TrafficLoopDataProvider {
+    - _unnamed_BolognaPhysicalTwin_: BolognaPhysicalTwin
+  }
+
+  class TrafficLoopShadow
+}
+
+package "TransformationRules.xmlutils" as XMLUTILS {
+  class UMLClass {
+    - class_id
+    - name
+    - generalizations
+    - specializations
+  }
+}
+
+' Inheritance (as declared in code)
+MongoManager --|> DatabaseManager
+TimescaleManager --|> DatabaseManager
+RoadShadow --|> DigitalShadow
+TrafficLoopShadow --|> DigitalShadow
+
+' Typed associations (directly annotated in code)
+Agent --> ContextBroker : _northbound_traffic
+ContextBroker --> SubscriptionManager : _subscriptions
+ContextBroker --> Agent : _southbound_traffic
+DatabaseManager --> DataManager : _unnamed_DataManager_
+DataManager --> DataModelManager : _unnamed_DataModelManager_
+DataManager --> DatabaseManager : _unnamed_DatabaseManager_
+DataModelManager --> DataManager : _unnamed_DataManager_
+DigitalShadow --> DigitalShadowManager : _unnamed_DigitalShadowManager_
+DigitalShadowManager --> DigitalTwinManager : _unnamed_DigitalTwinManager_
+DigitalTwinManager --> FeedbackTrafficLight : _unnamed_FeedbackTrafficLight_
+DigitalTwinManager --> SumoSimulator : _unnamed_SumoSimulator_
+DigitalTwinManager --> DigitalShadowManager : _unnamed_DigitalShadowManager_
+SumoSimulator --> DigitalTwinManager : _unnamed_DigitalTwinManager_
+Planner --> ScenarioGenerator : _unnamed_ScenarioGenerator_
+ScenarioGenerator --> Planner : _unnamed_Planner_
+SubscriptionManager --> ContextBroker : _unnamed_ContextBroker_
+TrafficLightDataReceiver --> BolognaPhysicalTwin : _unnamed_BolognaPhysicalTwin_
+TrafficLoopDataProvider --> BolognaPhysicalTwin : _unnamed_BolognaPhysicalTwin_
+
+' List-backed associations where class names are explicit in attribute identifiers
+' (lists in code without type hints but clearly referencing defined classes)
+BolognaPhysicalTwin "1" -- "*" TrafficLightDataReceiver : _unnamed_TrafficLightDataReceiver_
+BolognaPhysicalTwin "1" -- "*" TrafficLoopDataProvider : _unnamed_TrafficLoopDataProvider_
+DigitalShadowManager "1" -- "*" DigitalShadow : _unnamed_DigitalShadow_
+FeedbackTrafficLight "1" -- "*" DigitalTwinManager : _unnamed_DigitalTwinManager_
+
+@enduml

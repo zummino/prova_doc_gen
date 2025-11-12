@@ -1,0 +1,42 @@
+@startuml 
+skinparam shadowing false
+hide stereotype
+
+
+node "LocalMachine" as Local {
+  node "Python Runtime\n(treeco)" as Py
+
+  artifact "ONNX model\n*.onnx" as Onnx
+  artifact "MLIR module\n*.mlir" as Mlir
+  artifact "LLVM IR\n*.ll" as LlvmIR
+  artifact "Shared library\n*.so" as SharedLib
+  artifact "Executable\n(binary)" as Exe
+}
+
+node "External tools" as Tools {
+  node "mlir-opt\n(subprocess)" as MlirOpt
+  node "mlir-translate\n(subprocess)" as MlirTranslate
+  node "clang\n(subprocess)" as Clang
+}
+
+' ONNX parsing and IR generation
+Py --> Onnx : read via onnx.load\n(treeco/frontend/parser.py)
+' MLIR emission/optimization pipeline
+Py --> Mlir : write via utils.dump_ir\n(treeco/utils/__init__.py)
+Py --> MlirOpt : invoke via subprocess\n(treeco/utils/dump_ir,\n treeco/lowering/mlir_opt.py)
+MlirOpt --> Mlir : produce optimized MLIR
+
+' LLVM compilation pipeline (library and executable flows)
+Py --> MlirTranslate : invoke\n(treeco/targets/llvm/library.py,\n treeco/targets/llvm/standalone.py)
+MlirTranslate --> LlvmIR
+
+Py --> Clang : invoke\n(treeco/targets/llvm/library.py,\n treeco/targets/llvm/standalone.py)
+LlvmIR --> Clang
+Clang --> SharedLib : compile -shared (.so)
+Clang --> Exe : link executable
+
+' Native execution
+Py --> SharedLib : load via ctypes\n(run_ctype_inference)
+Py --> Exe : run via subprocess\n(compile_and_run)
+
+@enduml

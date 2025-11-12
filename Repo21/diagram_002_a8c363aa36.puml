@@ -1,0 +1,72 @@
+@startuml 
+
+
+package "treeco.model" {
+  class Ensemble {
+    +trees: List[Node] | List[List[Node]]
+    +n_features: int
+    +aggregate_mode: Optional[str]
+    +post_transform: Optional[str]
+    +targets: Set
+    +n_targets: int
+    +max_depth: int
+    +min_depth: int
+    +n_nodes: int
+    +leaf_shape: int
+    +n_leaves: int
+    +n_trees(): int
+    +is_perfect(): bool
+    +is_oblivious(): bool
+    +has_constant_depth(): bool
+    +predict_raw(X): np.ndarray
+    +predict(X): np.ndarray
+    +output_range(): Tuple
+    +quantize_thresholds(...)
+    +quantize_leaves(...)
+    +logits_to_vote()
+    +pad_to_perfect(...)
+    +pad_to_min_depth(...)
+    +prune_trees(n_trees:int)
+    +parse_attr(attr: treeco.TreeEnsembleAttr): Ensemble
+    +to_attr(): Mapping
+    +to_numpy_arrays(...)
+    +to_numpy_vectors(...)
+  }
+
+  class Node {
+    +targets_ids: np.ndarray
+    +targets_weights: np.ndarray
+    +nodes_featureids: np.number
+    +nodes_values: np.number
+    +nodes_hitrates: np.number
+    +nodes_modes: np.str_
+    +is_perfect(): bool
+    +is_oblivious(): bool
+    +n_nodes: int
+    +n_leaves: int
+    +leaf_shape: int
+    +targets: Set
+    +output_range(): tuple
+    +predict(x, return_target_id:bool=False): np.ndarray
+    +apply(x): Node
+    +quantize_nodes_values(...)
+    +round_nodes_values(...)
+    +quantize_target_weights(...)
+    +logits_to_vote(...)
+    +prune_same_targets()
+    +pad_to_min_depth(min_depth:int)
+    +pad_to_perfect(target_edge_depth:Optional[int])
+    +parse_dict(tree_dict: Mapping): Node
+    +to_dict(tree_idx:int=0): Mapping
+    +to_numpy_arrays(visit_method, n_features:int): tuple
+    +to_numpy_vectors(prune_full_padding_paths: bool): tuple
+  }
+
+  Ensemble "1" o-- "*" Node : contains
+}
+
+note right of Node
+  Inherits from bigtree.BinaryNode (external).
+end note
+
+@enduml

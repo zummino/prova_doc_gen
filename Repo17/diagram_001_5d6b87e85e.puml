@@ -1,0 +1,23 @@
+@startuml 
+
+left to right direction
+
+actor FS as "File system"
+
+rectangle "Model Transformation Tool" as System {
+  usecase UC1 as "Import CIM VP XML\n(SourceXMLParser)"
+  usecase UC2 as "Persist imported CIM CSV\n(saveToCsv - CIM)"
+  usecase UC3 as "Transform CIM to PIM\n(cim2pimTransformation)"
+  usecase UC4 as "Persist generated PIM CSV\n(saveToCsv - PIM)"
+  usecase UC5 as "Generate PIM XML\n(TargetXMLCreator)"
+  usecase UC6 as "Transform PIM to PSM\n(pim2psmTransformation)"
+  usecase UC7 as "Persist generated PSM CSV\n(saveToCsv - PSM)"
+  usecase UC8 as "Generate PSM XML\n(TargetXMLCreator)"
+}
+
+FS --> UC1
+FS <-- UC2
+FS <-- UC5
+FS <-- UC7
+FS <-- UC8
+@enduml
