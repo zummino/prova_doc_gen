@@ -1,0 +1,383 @@
+@startuml
+title gamerepo — Complete Class Diagram
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+' External libraries/packages referenced by the codebase
+package "org.springframework.data.jpa.repository" as spring_data_jpa {
+  interface JpaRepository<T, ID>
+}
+package "org.springframework.web.filter" as spring_web_filter {
+  abstract class OncePerRequestFilter
+}
+package "org.springframework.boot" as spring_boot {
+  class SpringApplication
+}
+package "org.springframework.context" as spring_context {
+  interface MessageSource
+}
+package "org.springframework.http" as spring_http {
+  class ResponseEntity<T>
+  enum HttpStatus
+}
+package "testrobotchallenge.commons.models.dto.api" as trc_api {
+  class ApiErrorBackend
+}
+package "testrobotchallenge.commons.mappers" as trc_mappers {
+  interface JacocoScoreMapper
+  interface EvosuiteScoreMapper
+  interface CoverageMapper
+}
+package "testrobotchallenge.commons.models.opponent" as trc_opponent {
+  enum GameMode
+  enum OpponentDifficulty
+}
+package "testrobotchallenge.commons.models.score" as trc_score {
+  class EvosuiteScore
+  class JacocoScore
+}
+package "testrobotchallenge.commons.models.dto.score.basic" as trc_score_dto {
+  class EvosuiteScoreDTO
+  class JacocoScoreDTO
+}
+
+' Root application
+package "com.t4.gamerepo" as root {
+  class GamerepoApplication
+}
+
+' Controllers
+package "com.t4.gamerepo.controller" as controller {
+  class GameController
+}
+
+package "com.t4.gamerepo.controller.advices" as advices {
+  class GlobalExceptionHandler
+}
+
+' Filters
+package "com.t4.gamerepo.filter" as filter {
+  class FilterConfig
+  class HttpRequestLoggerFilter
+}
+
+' Services
+package "com.t4.gamerepo.service" as service {
+  class GameService
+  class RoundService
+  class TurnService
+}
+
+' Service exceptions
+package "com.t4.gamerepo.service.exceptions" as exc {
+  class DuplicatedPlayersInGameException
+  class FoundRoundNotClosedException
+  class GameAlreadyClosedException
+  class GameNotFoundException
+  class NotPlayerTurnException
+  class PlayerNotInGameException
+  class RoundAlreadyClosedException
+  class RoundNotFoundException
+  class TurnAlreadyClosedException
+  class TurnNotFoundException
+}
+
+' Mappers
+package "com.t4.gamerepo.mapper" as mapper {
+  class MapperFacade
+  interface GameMapper
+  interface RoundMapper
+  interface TurnMapper
+  interface TurnScoreMapper
+  interface PlayerResultMapper
+}
+
+' Model, entities and repositories
+package "com.t4.gamerepo.model" as model {
+  class Game {
+    +Long id
+    +List<Long> players
+    +GameStatus status
+    +trc_opponent.GameMode gameMode
+    +Map<Long, PlayerResult> playerResults
+    +List<Round> rounds
+    +java.sql.Timestamp startedAt
+    +java.sql.Timestamp closedAt
+    +void addRound(Round newRound)
+    +Round getLastRound()
+  }
+  enum GameStatus {
+    CREATED
+    STARTED
+    IN_PROGRESS
+    FINISHED
+    SURRENDERED
+  }
+  class PlayerResult {
+    +int score
+    +boolean isWinner
+  }
+  class Round {
+    +Long id
+    +String classUT
+    +String type
+    +trc_opponent.OpponentDifficulty difficulty
+    +int roundNumber
+    +List<Turn> turns
+    +java.sql.Timestamp startedAt
+    +java.sql.Timestamp closedAt
+    +void addTurn(Turn turn)
+  }
+  class Turn {
+    +Long id
+    +Long playerId
+    +int turnNumber
+    +TurnScore score
+    +java.sql.Timestamp startedAt
+    +java.sql.Timestamp closedAt
+  }
+  class TurnScore {
+    +trc_score.JacocoScore jacocoScore
+    +trc_score.EvosuiteScore evosuiteScore
+  }
+}
+
+package "com.t4.gamerepo.model.repositories" as repo {
+  interface GameRepository
+  interface RoundRepository
+  interface TurnRepository
+}
+
+' DTOs
+package "com.t4.gamerepo.model.dto.response" as dto_resp {
+  class GameDTO <<record>> {
+    +Long id
+    +List<Long> players
+    +model.GameStatus status
+    +trc_opponent.GameMode gameMode
+    +Map<Long, dto_common.PlayerResultDTO> playerResults
+    +List<RoundDTO> rounds
+    +java.sql.Timestamp startedAt
+    +java.sql.Timestamp closedAt
+  }
+  class RoundDTO <<record>> {
+    +String classUT
+    +String type
+    +trc_opponent.OpponentDifficulty difficulty
+    +int roundNumber
+    +List<TurnDTO> turns
+    +java.sql.Timestamp startedAt
+    +java.sql.Timestamp closedAt
+  }
+  class TurnDTO <<record>> {
+    +Long playerId
+    +int turnNumber
+    +dto_common.TurnScoreDTO score
+    +java.sql.Timestamp startedAt
+    +java.sql.Timestamp closedAt
+  }
+}
+
+package "com.t4.gamerepo.model.dto.request" as dto_req {
+  class CloseGameDTO {
+    +Map<Long, dto_common.PlayerResultDTO> results
+    +boolean isGameSurrendered
+  }
+  class CloseTurnDTO {
+    +Long playerId
+    +dto_common.TurnScoreDTO turnScoreDTO
+  }
+  class CreateGameDTO {
+    +trc_opponent.GameMode gameMode
+    +List<Long> players
+  }
+  class CreateRoundDTO {
+    +String classUT
+    +String type
+    +trc_opponent.OpponentDifficulty difficulty
+    +int roundNumber
+  }
+  class CreateTurnDTO {
+    +long playerId
+    +int turnNumber
+  }
+}
+
+package "com.t4.gamerepo.model.dto.common" as dto_common {
+  class PlayerResultDTO {
+    +boolean isWinner
+    +int score
+  }
+  class TurnScoreDTO {
+    +trc_score_dto.EvosuiteScoreDTO evosuiteScoreDTO
+    +trc_score_dto.JacocoScoreDTO jacocoScoreDTO
+  }
+}
+
+' Relationships — Controllers
+controller.GameController --> service.GameService : uses
+controller.GameController ..> dto_resp.GameDTO
+controller.GameController ..> dto_resp.RoundDTO
+controller.GameController ..> dto_resp.TurnDTO
+controller.GameController ..> dto_req.CreateGameDTO
+controller.GameController ..> dto_req.CreateRoundDTO
+controller.GameController ..> dto_req.CreateTurnDTO
+controller.GameController ..> dto_req.CloseTurnDTO
+controller.GameController ..> dto_req.CloseGameDTO
+controller.GameController ..> trc_api.ApiErrorBackend
+
+advices.GlobalExceptionHandler ..> spring_context.MessageSource
+advices.GlobalExceptionHandler ..> exc.GameNotFoundException
+advices.GlobalExceptionHandler ..> exc.PlayerNotInGameException
+advices.GlobalExceptionHandler ..> exc.DuplicatedPlayersInGameException
+advices.GlobalExceptionHandler ..> exc.FoundRoundNotClosedException
+advices.GlobalExceptionHandler ..> exc.GameAlreadyClosedException
+advices.GlobalExceptionHandler ..> exc.RoundAlreadyClosedException
+advices.GlobalExceptionHandler ..> exc.TurnAlreadyClosedException
+advices.GlobalExceptionHandler ..> exc.NotPlayerTurnException
+advices.GlobalExceptionHandler ..> exc.RoundNotFoundException
+advices.GlobalExceptionHandler ..> exc.TurnNotFoundException
+advices.GlobalExceptionHandler ..> trc_api.ApiErrorBackend
+advices.GlobalExceptionHandler ..> spring_http.ResponseEntity
+
+' Relationships — Filters
+filter.FilterConfig ..> filter.HttpRequestLoggerFilter : registers
+filter.HttpRequestLoggerFilter -up-|> spring_web_filter.OncePerRequestFilter
+
+' Relationships — Services
+service.GameService ..> repo.GameRepository
+service.GameService ..> service.RoundService
+service.GameService ..> mapper.MapperFacade
+service.GameService ..> model.Game
+service.GameService ..> model.Round
+service.GameService ..> model.TurnScore
+service.GameService ..> model.PlayerResult
+service.GameService ..> model.GameStatus
+service.GameService ..> dto_resp.GameDTO
+service.GameService ..> dto_resp.RoundDTO
+service.GameService ..> dto_resp.TurnDTO
+service.GameService ..> dto_req.CreateGameDTO
+service.GameService ..> dto_req.CreateRoundDTO
+service.GameService ..> dto_req.CreateTurnDTO
+service.GameService ..> dto_req.CloseTurnDTO
+service.GameService ..> dto_req.CloseGameDTO
+service.GameService ..> exc.GameNotFoundException
+service.GameService ..> exc.DuplicatedPlayersInGameException
+service.GameService ..> exc.FoundRoundNotClosedException
+service.GameService ..> exc.GameAlreadyClosedException
+service.GameService ..> exc.PlayerNotInGameException
+service.GameService ..> exc.RoundNotFoundException
+
+service.RoundService ..> repo.RoundRepository
+service.RoundService ..> service.TurnService
+service.RoundService ..> model.Round
+service.RoundService ..> model.Turn
+service.RoundService ..> model.TurnScore
+service.RoundService ..> exc.RoundAlreadyClosedException
+service.RoundService ..> exc.TurnNotFoundException
+
+service.TurnService ..> repo.TurnRepository
+service.TurnService ..> model.Turn
+service.TurnService ..> model.TurnScore
+service.TurnService ..> exc.NotPlayerTurnException
+service.TurnService ..> exc.TurnAlreadyClosedException
+
+' Relationships — Mappers
+mapper.MapperFacade --> mapper.GameMapper
+mapper.MapperFacade --> mapper.RoundMapper
+mapper.MapperFacade --> mapper.TurnMapper
+mapper.MapperFacade --> mapper.TurnScoreMapper
+mapper.MapperFacade --> mapper.PlayerResultMapper
+mapper.MapperFacade ..> model.Game
+mapper.MapperFacade ..> model.Round
+mapper.MapperFacade ..> model.Turn
+mapper.MapperFacade ..> model.TurnScore
+mapper.MapperFacade ..> model.PlayerResult
+mapper.MapperFacade ..> dto_resp.GameDTO
+mapper.MapperFacade ..> dto_resp.RoundDTO
+mapper.MapperFacade ..> dto_resp.TurnDTO
+mapper.MapperFacade ..> dto_common.TurnScoreDTO
+mapper.MapperFacade ..> dto_common.PlayerResultDTO
+
+mapper.GameMapper ..> model.Game
+mapper.GameMapper ..> dto_resp.GameDTO
+mapper.GameMapper ..> mapper.RoundMapper
+mapper.GameMapper ..> mapper.TurnMapper
+mapper.GameMapper ..> mapper.PlayerResultMapper
+
+mapper.RoundMapper ..> model.Round
+mapper.RoundMapper ..> dto_resp.RoundDTO
+mapper.RoundMapper ..> mapper.TurnMapper
+
+mapper.TurnMapper ..> model.Turn
+mapper.TurnMapper ..> dto_resp.TurnDTO
+mapper.TurnMapper ..> mapper.TurnScoreMapper
+
+mapper.TurnScoreMapper ..> model.TurnScore
+mapper.TurnScoreMapper ..> dto_common.TurnScoreDTO
+mapper.TurnScoreMapper ..> trc_mappers.JacocoScoreMapper
+mapper.TurnScoreMapper ..> trc_mappers.EvosuiteScoreMapper
+mapper.TurnScoreMapper ..> trc_mappers.CoverageMapper
+
+mapper.PlayerResultMapper ..> model.PlayerResult
+mapper.PlayerResultMapper ..> dto_common.PlayerResultDTO
+
+' Repositories extend Spring Data JPA
+repo.GameRepository -up-|> spring_data_jpa.JpaRepository
+repo.RoundRepository -up-|> spring_data_jpa.JpaRepository
+repo.TurnRepository -up-|> spring_data_jpa.JpaRepository
+
+' Repository domain associations
+repo.GameRepository ..> model.Game
+repo.RoundRepository ..> model.Round
+repo.TurnRepository ..> model.Turn
+
+' Entity relationships
+model.Game "1" o-- "0..*" model.Round : rounds
+model.Game ..> model.PlayerResult : playerResults
+model.Game ..> model.GameStatus
+model.Game ..> trc_opponent.GameMode
+
+model.Round "1" o-- "0..*" model.Turn : turns
+model.Round ..> trc_opponent.OpponentDifficulty
+
+model.Turn *-- model.TurnScore : score
+model.TurnScore ..> trc_score.JacocoScore
+model.TurnScore ..> trc_score.EvosuiteScore
+
+' DTO relationships
+dto_resp.GameDTO ..> model.GameStatus
+dto_resp.GameDTO ..> trc_opponent.GameMode
+dto_resp.GameDTO ..> dto_common.PlayerResultDTO
+dto_resp.GameDTO ..> dto_resp.RoundDTO
+
+dto_resp.RoundDTO ..> trc_opponent.OpponentDifficulty
+dto_resp.RoundDTO ..> dto_resp.TurnDTO
+
+dto_resp.TurnDTO ..> dto_common.TurnScoreDTO
+
+dto_req.CloseGameDTO ..> dto_common.PlayerResultDTO
+dto_req.CloseTurnDTO ..> dto_common.TurnScoreDTO
+dto_req.CreateGameDTO ..> trc_opponent.GameMode
+dto_req.CreateRoundDTO ..> trc_opponent.OpponentDifficulty
+
+dto_common.TurnScoreDTO ..> trc_score_dto.EvosuiteScoreDTO
+dto_common.TurnScoreDTO ..> trc_score_dto.JacocoScoreDTO
+
+' Exceptions extend RuntimeException
+exc.DuplicatedPlayersInGameException -up-|> java.lang.RuntimeException
+exc.FoundRoundNotClosedException -up-|> java.lang.RuntimeException
+exc.GameAlreadyClosedException -up-|> java.lang.RuntimeException
+exc.GameNotFoundException -up-|> java.lang.RuntimeException
+exc.NotPlayerTurnException -up-|> java.lang.RuntimeException
+exc.PlayerNotInGameException -up-|> java.lang.RuntimeException
+exc.RoundAlreadyClosedException -up-|> java.lang.RuntimeException
+exc.RoundNotFoundException -up-|> java.lang.RuntimeException
+exc.TurnAlreadyClosedException -up-|> java.lang.RuntimeException
+exc.TurnNotFoundException -up-|> java.lang.RuntimeException
+
+' Application main class
+root.GamerepoApplication ..> spring_boot.SpringApplication : run()
+
+@enduml

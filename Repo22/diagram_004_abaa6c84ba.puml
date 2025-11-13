@@ -1,0 +1,65 @@
+@startuml
+title Section 8.1 — Deployment Diagram — Gamerepo
+
+node "API Client" as client
+
+node "Gamerepo Application\n(Spring Boot JVM process)" as app {
+  artifact "GamerepoApplication" as artifact_app
+
+  frame "Web Layer" as web {
+    component "GameController" <<RestController>> as gameController
+    component "GlobalExceptionHandler" <<ControllerAdvice>> as geh
+    component "HttpRequestLoggerFilter" <<Filter>> as reqFilter
+  }
+
+  frame "Service Layer" as svc {
+    component "GameService" as gameSvc
+    component "RoundService" as roundSvc
+    component "TurnService" as turnSvc
+  }
+
+  frame "Persistence Layer" as persistence {
+    component "GameRepository <<JPA>>" as repoGame
+    component "RoundRepository <<JPA>>" as repoRound
+    component "TurnRepository <<JPA>>" as repoTurn
+    component "Entities:\n- Game\n- Round\n- Turn\n- TurnScore\n- PlayerResult" as entities
+  }
+
+  frame "Mapping Layer" as mapping {
+    component "MapperFacade" as mapperFacade
+    component "GameMapper <<MapStruct>>" as gameMapper
+    component "RoundMapper <<MapStruct>>" as roundMapper
+    component "TurnMapper <<MapStruct>>" as turnMapper
+    component "TurnScoreMapper <<MapStruct>>" as turnScoreMapper
+    component "PlayerResultMapper <<MapStruct>>" as playerResultMapper
+  }
+
+  artifact "testrobotchallenge-commons\n(library on classpath)" as commons_lib
+}
+
+database "Relational Database\n(tables: games, players,\n game_player_results, rounds, turns)" as db
+
+client --> gameController : HTTP
+reqFilter ..> gameController : forwards
+gameController --> gameSvc : method calls
+gameSvc --> roundSvc
+roundSvc --> turnSvc
+
+gameSvc ..> mapperFacade
+roundSvc ..> repoRound
+turnSvc ..> repoTurn
+gameSvc ..> repoGame
+
+mapperFacade ..> gameMapper
+mapperFacade ..> roundMapper
+mapperFacade ..> turnMapper
+mapperFacade ..> turnScoreMapper
+mapperFacade ..> playerResultMapper
+
+repoGame --> db : JPA/Hibernate (JDBC)
+repoRound --> db : JPA/Hibernate (JDBC)
+repoTurn --> db : JPA/Hibernate (JDBC)
+
+geh ..> client : error responses
+app ..> commons_lib : uses DTOs & mappers
+@enduml

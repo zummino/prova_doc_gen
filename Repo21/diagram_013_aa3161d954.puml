@@ -1,0 +1,53 @@
+@startuml
+
+package "treeco.lowering.emitc" {
+
+  package "convert_arith_to_emitc" {
+    class CmpiToCmp <<RewritePattern>> { }
+    class CmpfToCmp <<RewritePattern>> { }
+    class AddToAdd <<RewritePattern>> { }
+    class MulToMul <<RewritePattern>> { }
+    class SubToSub <<RewritePattern>> { }
+    class ExtUIToCast <<RewritePattern>> { }
+    class IndexCastToCast <<RewritePattern>> { }
+    class ConstantToConstant <<RewritePattern>> { }
+
+    class ConvertArithToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "convert_memref_to_emitc" {
+    class MemrefToArrayType <<TypeConversionPattern>> { }
+    class AllocToGlobal <<RewritePattern>> { }
+    class AllocToAllocOpaque <<RewritePattern>> { }
+    class StoreToAssign <<RewritePattern>> { }
+    class GlobalToGlobal <<RewritePattern>> { }
+    class GetGlobalToGetGlobal <<RewritePattern>> { }
+    class LoadToSubscript <<RewritePattern>> { }
+    class FixFuncBlocks <<RewritePattern>> { }
+
+    class ConvertMemrefToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "convert_printf_to_emitc" {
+    class PrintfToEmitc <<RewritePattern>> { }
+
+    class ConvertPrintfToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "convert_scf_to_emitc" {
+    class ForToFor <<RewritePattern>> { }
+    class WhileToFor <<RewritePattern>> { }
+
+    class ConvertScfToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+}
+
+@enduml

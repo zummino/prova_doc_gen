@@ -184,6 +184,7 @@ Figure 3.1 — Architecture Overview – Component Diagram
 
 ```plantuml
 @startuml
+skinparam componentStyle rectangle
 
 /'
   Legend:
@@ -191,7 +192,6 @@ Figure 3.1 — Architecture Overview – Component Diagram
   - Packages group related components (subsystems).
   - Dependencies are shown among packages (key flows).
 '/
-
 
 package "Compiler" as CompilerPkg {
   [treeco.compiler]
@@ -321,7 +321,7 @@ CompilerPkg --> ExternalPkg
 [treeco.frontend.ir_gen] --> [treeco.dialects.onnxml]
 [treeco.frontend.ir_gen] --> [treeco.dialects.extended.ml_program]
 [treeco.frontend.ir_gen] --> [treeco.dialects.extended.tensor]
-[treeco.frontend.ir_gen] --> [treeco.dialects.crown] ' via conversion path downstream
+[treeco.frontend.ir_gen] --> [treeco.dialects.crown]
 
 ' Dialects depend on xdsl primitives
 DialectsPkg --> [xdsl (framework)]
@@ -330,16 +330,19 @@ DialectsPkg --> [xdsl (framework)]
 [treeco.lowering.convert_onnxml_to_crown] --> [treeco.dialects.onnxml]
 [treeco.lowering.convert_onnxml_to_crown] --> [treeco.dialects.crown]
 [treeco.lowering.convert_onnxml_to_crown] --> [treeco.dialects.treeco]
+
 [treeco.lowering.convert_crown_to_trunk] --> [treeco.dialects.crown]
 [treeco.lowering.convert_crown_to_trunk] --> [treeco.dialects.trunk]
 [treeco.lowering.convert_crown_to_trunk] --> [treeco.dialects.extended.tensor]
 [treeco.lowering.convert_crown_to_trunk] --> [treeco.dialects.extended.bufferization]
-[treeco.lowering.convert_crown_to_trunk] --> [ModelPkg]
+[treeco.lowering.convert_crown_to_trunk] --> ModelPkg
+
 [treeco.lowering.lower_trunk] --> [treeco.dialects.trunk]
 [treeco.lowering.lower_trunk] --> [treeco.dialects.extended.ml_program]
 [treeco.lowering.lower_trunk] --> [treeco.dialects.extended.tensor]
 [treeco.lowering.lower_trunk] --> [treeco.dialects.treeco]
-[treeco.lowering.lower_trunk] --> [ModelPkg]
+[treeco.lowering.lower_trunk] --> ModelPkg
+
 [treeco.lowering.lower_treeco] --> [treeco.dialects.treeco]
 [treeco.lowering.convert_ml_program_to_memref] --> [treeco.dialects.extended.ml_program]
 [treeco.lowering.convert_ml_program_to_memref] --> [xdsl (framework)]
@@ -352,18 +355,21 @@ DialectsPkg --> [xdsl (framework)]
 [treeco.lowering.emitc.convert_memref_to_emitc] --> [treeco.dialects.emitc]
 [treeco.lowering.emitc.convert_printf_to_emitc] --> [treeco.dialects.emitc]
 [treeco.lowering.emitc.convert_scf_to_emitc] --> [treeco.dialects.emitc]
-[treeco.lowering.emitc.convert_*] --> [xdsl (framework)]
+[treeco.lowering.emitc.convert_arith_to_emitc] --> [xdsl (framework)]
+[treeco.lowering.emitc.convert_memref_to_emitc] --> [xdsl (framework)]
+[treeco.lowering.emitc.convert_printf_to_emitc] --> [xdsl (framework)]
+[treeco.lowering.emitc.convert_scf_to_emitc] --> [xdsl (framework)]
 
 ' Transforms dependencies
 TransformsPkg --> [treeco.dialects.crown]
 TransformsPkg --> [treeco.dialects.treeco]
 TransformsPkg --> [treeco.dialects.trunk]
-TransformsPkg --> [UtilsPkg]
-TransformsPkg --> [ModelPkg]
+TransformsPkg --> UtilsPkg
+TransformsPkg --> ModelPkg
 TransformsPkg --> [xdsl (framework)]
 
 ' Targets: LLVM
-[treeco.targets.llvm.transforms] --> [UtilsPkg]
+[treeco.targets.llvm.transforms] --> UtilsPkg
 [treeco.targets.llvm.transforms] --> [mlir-opt]
 [treeco.targets.llvm.standalone] --> [xdsl (framework)]
 [treeco.targets.llvm.standalone] --> [numpy]
@@ -377,7 +383,7 @@ TransformsPkg --> [xdsl (framework)]
 [treeco.targets.cpp.transforms] --> [mlir-opt]
 [treeco.targets.cpp.standalone] --> [treeco.dialects.emitc]
 [treeco.targets.cpp.standalone] --> [xdsl (framework)]
-[treeco.targets.codegen_main] --> [UtilsPkg]
+[treeco.targets.codegen_main] --> UtilsPkg
 [treeco.targets.codegen_main] --> [xdsl (framework)]
 [treeco.targets.codegen_main] --> [numpy]
 
@@ -389,7 +395,6 @@ ModelPkg --> [bigtree]
 UtilsPkg --> [xdsl (framework)]
 UtilsPkg --> [numpy]
 [treeco.utils.__init__] --> [mlir-opt]
-
 @enduml
 ```
 
@@ -858,8 +863,19 @@ package "treeco.dialects.crown" {
 Figure: 5.1.2c — trunk Dialect
 
 ```plantuml
-@startuml 
+@startuml
 
+' (opzionale) tipi logici usati dagli op, se vuoi esplicitarli
+class TreeEnsembleType
+class TreeType
+class LeafType
+class NodeType
+class TreeEnsembleAttr
+class TensorType
+class MemRefType
+class IndexType
+class Bool
+class StringAttr
 
 package "treeco.dialects.trunk" {
   class AggregateLeafOp <<IRDLOperation>> {
@@ -885,7 +901,7 @@ package "treeco.dialects.trunk" {
     +node: NodeType
     +data_in: TensorType
     +result: NodeType
-    +root_node?: NodeType
+    +root_node: NodeType  ' optional param
   }
   class IsLeafOp <<IRDLOperation>> {
     +tree: TreeType
@@ -902,7 +918,9 @@ package "treeco.dialects.trunk" {
     +ensemble: TreeEnsembleAttr
     +result: TreeEnsembleType
   }
-  class PostTransform <<IRDLOperation>> { +mode: StringAttr }
+  class PostTransform <<IRDLOperation>> {
+    +mode: StringAttr
+  }
   class GetTreeOp <<IRDLOperation>> {
     +tree_ensemble: TreeEnsembleType
     +tree_index: IndexType
@@ -1048,48 +1066,185 @@ package "treeco.dialects.extended.bufferization" {
 Figure: 5.1.4 — emitc Dialect
 
 ```plantuml
-@startuml 
-
+@startuml
 
 package "treeco.dialects.emitc" {
+
   class CExpression <<OpTrait>> { }
 
   class ArrayType <<ParametrizedAttribute, TypeAttribute, ShapedType, ContainerType>> {
     +shape: ArrayAttr[IntAttr]
     +element_type: Attribute
   }
-  class OpaqueType <<ParametrizedAttribute, TypeAttribute>> { +value: StringAttr }
-  class PointerType <<ParametrizedAttribute, TypeAttribute>> { +pointee: Attribute }
-  class OpaqueAttr <<ParametrizedAttribute>> { +value: StringAttr }
 
-  class Add <<IRDLOperation>> { +lhs; +rhs; +res }
-  class Apply <<IRDLOperation>> { +operand; +applicableOperator: StringAttr; +result }
-  class Conditional <<IRDLOperation>> { +condition; +true_value; +false_value; +result }
-  class Constant <<IRDLOperation>> { +value; +result }
-  class DeclareFunction <<IRDLOperation>> { +sym_name: StringAttr }
-  class Div <<IRDLOperation>> { +divisor; +dividend; +result }
-  class Assign <<IRDLOperation>> { +var; +value }
-  class CallOpaque <<IRDLOperation>> { +callee: StringAttr; +args: ArrayAttr; +operands*; +results* }
-  class Cast <<IRDLOperation>> { +operand; +result }
-  class Cmp <<IRDLOperation>> { +predicate: AnyIntegerAttr; +lhs; +rhs; +result: Bool }
-  class Variable <<IRDLOperation>> { +value; +result }
-  class Func <<IRDLOperation>> { +sym_name: StringAttr; +function_type: FunctionType; +specifiers?: ArrayAttr[StringAttr] }
-  class GetGlobal <<IRDLOperation>> { +name: SymbolRefAttr; +result }
-  class Global <<IRDLOperation>> { +sym_name; +type; +initial_value; +extern?; +static?; +const? }
-  class If <<IRDLOperation>> { +condition; +true_region; +false_region? }
-  class Include <<IRDLOperation>> { +include: StringAttr; +is_standard_include? }
-  class Literal <<IRDLOperation>> { +value; +result }
-  class LogicalAnd <<IRDLOperation>> { +lhs; +rhs; +result: Bool }
-  class LogicalNot <<IRDLOperation>> { +operand; +result: Bool }
-  class LogicalOr <<IRDLOperation>> { +lhs; +rhs; +result: Bool }
-  class Mul <<IRDLOperation>> { +lhs; +rhs; +result }
-  class Rem <<IRDLOperation>> { +lhs; +rhs; +result }
-  class Return <<IRDLOperation>> { +operand* }
-  class Sub <<IRDLOperation>> { +lhs; +rhs; +result }
-  class Subscript <<IRDLOperation>> { +value; +indices*; +result }
-  class Verbatim <<IRDLOperation>> { +value: StringAttr }
+  class OpaqueType <<ParametrizedAttribute, TypeAttribute>> {
+    +value: StringAttr
+  }
+
+  class PointerType <<ParametrizedAttribute, TypeAttribute>> {
+    +pointee: Attribute
+  }
+
+  class OpaqueAttr <<ParametrizedAttribute>> {
+    +value: StringAttr
+  }
+
+  class Add <<IRDLOperation>> {
+    +lhs
+    +rhs
+    +res
+  }
+
+  class Apply <<IRDLOperation>> {
+    +operand
+    +applicableOperator: StringAttr
+    +result
+  }
+
+  class Conditional <<IRDLOperation>> {
+    +condition
+    +true_value
+    +false_value
+    +result
+  }
+
+  class Constant <<IRDLOperation>> {
+    +value
+    +result
+  }
+
+  class DeclareFunction <<IRDLOperation>> {
+    +sym_name: StringAttr
+  }
+
+  class Div <<IRDLOperation>> {
+    +divisor
+    +dividend
+    +result
+  }
+
+  class Assign <<IRDLOperation>> {
+    +var
+    +value
+  }
+
+  class CallOpaque <<IRDLOperation>> {
+    +callee: StringAttr
+    +args: ArrayAttr
+    +"operands*"
+    +"results*"
+  }
+
+  class Cast <<IRDLOperation>> {
+    +operand
+    +result
+  }
+
+  class Cmp <<IRDLOperation>> {
+    +predicate: AnyIntegerAttr
+    +lhs
+    +rhs
+    +result: Bool
+  }
+
+  class Variable <<IRDLOperation>> {
+    +value
+    +result
+  }
+
+  class Func <<IRDLOperation>> {
+    +sym_name: StringAttr
+    +function_type: FunctionType
+    +"specifiers?: ArrayAttr[StringAttr]"
+  }
+
+  class GetGlobal <<IRDLOperation>> {
+    +name: SymbolRefAttr
+    +result
+  }
+
+  class Global <<IRDLOperation>> {
+    +sym_name
+    +type
+    +initial_value
+    +"extern?"
+    +"static?"
+    +"const?"
+  }
+
+  class If <<IRDLOperation>> {
+    +condition
+    +true_region
+    +"false_region?"
+  }
+
+  class Include <<IRDLOperation>> {
+    +include: StringAttr
+    +"is_standard_include?"
+  }
+
+  class Literal <<IRDLOperation>> {
+    +value
+    +result
+  }
+
+  class LogicalAnd <<IRDLOperation>> {
+    +lhs
+    +rhs
+    +result: Bool
+  }
+
+  class LogicalNot <<IRDLOperation>> {
+    +operand
+    +result: Bool
+  }
+
+  class LogicalOr <<IRDLOperation>> {
+    +lhs
+    +rhs
+    +result: Bool
+  }
+
+  class Mul <<IRDLOperation>> {
+    +lhs
+    +rhs
+    +result
+  }
+
+  class Rem <<IRDLOperation>> {
+    +lhs
+    +rhs
+    +result
+  }
+
+  class Return <<IRDLOperation>> {
+    +"operand*"
+  }
+
+  class Sub <<IRDLOperation>> {
+    +lhs
+    +rhs
+    +result
+  }
+
+  class Subscript <<IRDLOperation>> {
+    +value
+    +"indices*"
+    +result
+  }
+
+  class Verbatim <<IRDLOperation>> {
+    +value: StringAttr
+  }
+
   class Yield <<IRDLOperation>> { }
-  class For <<IRDLOperation>> { +lowerBound; +upperBound; +step; +body }
+
+  class For <<IRDLOperation>> {
+    +lowerBound
+    +upperBound
+    +step
+    +body
+  }
 
   ' Associations to attribute types
   CallOpaque ..> OpaqueAttr
@@ -1097,7 +1252,7 @@ package "treeco.dialects.emitc" {
   Func ..> FunctionType
   GetGlobal ..> SymbolRefAttr
   Global ..> TypeAttribute
-  ArrayType ..> "element_type: Attribute"
+  ArrayType ..> Attribute
   ArrayType ..> "shape: ArrayAttr[IntAttr]"
 }
 
@@ -1140,10 +1295,10 @@ Parser ..> onnx.GraphProto : uses (external)
 Figure: 5.1.6a — Lowering to emitc
 
 ```plantuml
-@startuml 
-
+@startuml
 
 package "treeco.lowering.emitc" {
+
   package "convert_arith_to_emitc" {
     class CmpiToCmp <<RewritePattern>> { }
     class CmpfToCmp <<RewritePattern>> { }
@@ -1153,7 +1308,10 @@ package "treeco.lowering.emitc" {
     class ExtUIToCast <<RewritePattern>> { }
     class IndexCastToCast <<RewritePattern>> { }
     class ConstantToConstant <<RewritePattern>> { }
-    class ConvertArithToEmitcPass <<ModulePass>> { +apply(ctx, op) }
+
+    class ConvertArithToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "convert_memref_to_emitc" {
@@ -1165,18 +1323,27 @@ package "treeco.lowering.emitc" {
     class GetGlobalToGetGlobal <<RewritePattern>> { }
     class LoadToSubscript <<RewritePattern>> { }
     class FixFuncBlocks <<RewritePattern>> { }
-    class ConvertMemrefToEmitcPass <<ModulePass>> { +apply(ctx, op) }
+
+    class ConvertMemrefToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "convert_printf_to_emitc" {
     class PrintfToEmitc <<RewritePattern>> { }
-    class ConvertPrintfToEmitcPass <<ModulePass>> { +apply(ctx, op) }
+
+    class ConvertPrintfToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "convert_scf_to_emitc" {
     class ForToFor <<RewritePattern>> { }
     class WhileToFor <<RewritePattern>> { }
-    class ConvertScfToEmitcPass <<ModulePass>> { +apply(ctx, op) }
+
+    class ConvertScfToEmitcPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 }
 
@@ -1186,13 +1353,15 @@ package "treeco.lowering.emitc" {
 Figure: 5.1.6b — Lowering treeco/trunk/onnxml pipelines
 
 ```plantuml
-@startuml 
-
-
+@startuml
 package "treeco.lowering" {
+
   package "convert_onnxml_to_crown" {
     class ConvertEnsemble <<RewritePattern>> { }
-    class ConvertOnnxmlToCrownPass <<ModulePass>> { +apply(ctx, op) }
+
+    class ConvertOnnxmlToCrownPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "convert_crown_to_trunk" {
@@ -1203,13 +1372,19 @@ package "treeco.lowering" {
     class LowerEnsembleToVectorTraverse <<RewritePattern>> { }
     class LowerEnsemblePostTransform <<RewritePattern>> { }
     class LowerEnsembleAggregateMode <<RewritePattern>> { }
-    class ConvertCrownToTrunkIterativePass <<ModulePass>> { +apply(ctx, op) }
+
+    class ConvertCrownToTrunkIterativePass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "convert_ml_program_to_memref" {
     class ConvertGlobalPattern <<RewritePattern>> { }
     class ConvertGlobalLoadConst <<RewritePattern>> { }
-    class ConvertMlProgramToMemrefPass <<ModulePass>> { +apply(ctx, op) }
+
+    class ConvertMlProgramToMemrefPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "convert_scf_to_cf" {
@@ -1225,7 +1400,10 @@ package "treeco.lowering" {
     class LowerGetLeafOp <<RewritePattern>> { }
     class LowerGetLeafValueOp <<RewritePattern>> { }
     class LowerAggregateLeafOp <<RewritePattern>> { }
-    class LowerTrunkPass <<ModulePass>> { +apply(ctx, op) }
+
+    class LowerTrunkPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "lower_treeco" {
@@ -1234,7 +1412,10 @@ package "treeco.lowering" {
     class LowerCastSign <<RewritePattern>> { }
     class RemoveLeftoverNodeTypes <<TypeConversionPattern>> { }
     class RemoveUnusedGlobals <<RewritePattern>> { }
-    class LowerTreecoPass <<ModulePass>> { +apply(ctx, op) }
+
+    class LowerTreecoPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
   }
 
   package "bufferize" {
@@ -1245,7 +1426,6 @@ package "treeco.lowering" {
     class mlir_opt_pass <<function>> { }
   }
 }
-
 @enduml
 ```
 
@@ -1261,26 +1441,33 @@ Figure: 5.1.7 — Transforms
 package "treeco.transforms" {
   package "crown_pad_to_perfect" {
     class CrownPadTreesPerfect <<RewritePattern>> { }
-    class CrownPadTreesPerfectPass <<ModulePass>> { +apply(ctx, op) }
+    class CrownPadTreesPerfectPass <<ModulePass>> { 
++apply(ctx, op) 
+}
   }
 
   package "crown_prune" {
     class CrownPruneTrees <<RewritePattern>> { }
-    class CrownPruneTreesPass <<ModulePass>> { +apply(ctx, op, multiple_of_n_trees) }
+    class CrownPruneTreesPass <<ModulePass>> { 
+  +apply(ctx, op, multiple_of_n_trees) }
   }
 
   package "crown_quantize" {
     class QuantizeInput <<RewritePattern>> { }
     class RoundInput <<RewritePattern>> { }
     class QuantizeLeaves <<RewritePattern>> { }
-    class CrownQuantizeInputPass <<ModulePass>> { +apply(ctx, op, precision, min_val, max_val) }
-    class CrownRoundInputPass <<ModulePass>> { +apply(ctx, op, precision) }
-    class CrownQuantizeLeavesPass <<ModulePass>> { +apply(ctx, op, precision) }
+    class CrownQuantizeInputPass <<ModulePass>> { 
++apply(ctx, op, precision, min_val, max_val) }
+    class CrownRoundInputPass <<ModulePass>> { 
++apply(ctx, op, precision) }
+    class CrownQuantizeLeavesPass <<ModulePass>> { 
++apply(ctx, op, precision) }
   }
 
   package "crown_voting" {
     class ConvertToVoting <<RewritePattern>> { }
-    class CrownConvertToVotingClassifierPass <<ModulePass>> { +apply(ctx, op) }
+    class CrownConvertToVotingClassifierPass <<ModulePass>> { 
++apply(ctx, op) }
   }
 
   package "func_legalize" {
@@ -1290,27 +1477,32 @@ package "treeco.transforms" {
   package "memref_merge_subview" {
     class FoldMemRefSubViewChain <<RewritePattern>> { }
     class MergeSubviewSlices <<RewritePattern>> { }
-    class FoldMemRefSubViewChainPass <<ModulePass>> { +apply(ctx, op) }
+    class FoldMemRefSubViewChainPass <<ModulePass>> { 
++apply(ctx, op) }
   }
 
   package "memref_quantize_global_index" {
     class MemrefQuantizeGlobalIndex <<RewritePattern>> { }
-    class MemrefQuantizeGlobalIndexPass <<ModulePass>> { +apply(ctx, op) }
+    class MemrefQuantizeGlobalIndexPass <<ModulePass>> {
+ +apply(ctx, op) }
   }
 
   package "ml_global_quantize_index" {
     class MlGlobalQuantizeIndex <<RewritePattern>> { }
-    class MlGlobalQuantizeIndexPass <<ModulePass>> { +apply(ctx, op) }
+    class MlGlobalQuantizeIndexPass <<ModulePass>> {
+ +apply(ctx, op) }
   }
 
   package "prepare_llvm_lowering" {
     class CCompatibleFunc <<RewritePattern>> { }
-    class PrepareLLVMLoweringPass <<ModulePass>> { +apply(ctx, op) }
+    class PrepareLLVMLoweringPass <<ModulePass>> { 
++apply(ctx, op) }
   }
 
   package "trunk_pad_to_min_depth" {
     class TrunkPadToMinDepth <<RewritePattern>> { }
-    class TrunkPadToMinDepthPass <<ModulePass>> { +apply(ctx, op, min_depth) }
+    class TrunkPadToMinDepthPass <<ModulePass>> {
+ +apply(ctx, op, min_depth) }
   }
 }
 
@@ -1328,8 +1520,12 @@ Figure: 5.1.8a — Targets C++
 
 package "treeco.targets.cpp" {
   package "standalone" {
-    class AddEmitC <<RewritePattern>> { +get_functions(op:ModuleOp) }
-    class AddMainPass <<ModulePass>> { +apply(ctx, op) }
+    class AddEmitC <<RewritePattern>> { 
+		+get_functions(op:ModuleOp) 
+		}
+    class AddMainPass <<ModulePass>> {
+	+apply(ctx, op) 
+	}
   }
 
   package "transforms" {
@@ -1348,7 +1544,9 @@ Figure: 5.1.8b — Targets LLVM
 package "treeco.targets.llvm" {
   package "standalone" {
     class AddLLVMMain <<RewritePattern>> { }
-    class AddLLVMMainPass <<ModulePass>> { +apply(ctx, op, test_data: Optional[np.array]) }
+    class AddLLVMMainPass <<ModulePass>> { 
+	+apply(ctx, op, test_data: Optional[np.array]) 
+	}
     class compile_and_run <<function>> { }
   }
 

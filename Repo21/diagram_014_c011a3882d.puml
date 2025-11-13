@@ -1,0 +1,74 @@
+@startuml
+package "treeco.lowering" {
+
+  package "convert_onnxml_to_crown" {
+    class ConvertEnsemble <<RewritePattern>> { }
+
+    class ConvertOnnxmlToCrownPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "convert_crown_to_trunk" {
+    class LowerEnsembleToMatmulTraverse <<RewritePattern>> { }
+    class LowerPostTransform <<RewritePattern>> { }
+    class ConvertIterativeEnsembleToPerfectIterativeMaybe <<RewritePattern>> { }
+    class LowerEnsembleToIterativeTraverse <<RewritePattern>> { }
+    class LowerEnsembleToVectorTraverse <<RewritePattern>> { }
+    class LowerEnsemblePostTransform <<RewritePattern>> { }
+    class LowerEnsembleAggregateMode <<RewritePattern>> { }
+
+    class ConvertCrownToTrunkIterativePass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "convert_ml_program_to_memref" {
+    class ConvertGlobalPattern <<RewritePattern>> { }
+    class ConvertGlobalLoadConst <<RewritePattern>> { }
+
+    class ConvertMlProgramToMemrefPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "convert_scf_to_cf" {
+    class convert_scf_to_cf_pass <<function>> { }
+  }
+
+  package "lower_trunk" {
+    class PartialLowerEnsemble <<RewritePattern>> { }
+    class LowerGetRoot <<RewritePattern>> { }
+    class LowerIsLeaf <<RewritePattern>> { }
+    class LowerVisitNextNode <<RewritePattern>> { }
+    class LowerGetTreeOp <<RewritePattern>> { }
+    class LowerGetLeafOp <<RewritePattern>> { }
+    class LowerGetLeafValueOp <<RewritePattern>> { }
+    class LowerAggregateLeafOp <<RewritePattern>> { }
+
+    class LowerTrunkPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "lower_treeco" {
+    class SignToSignLess <<TypeConversionPattern>> { }
+    class LowerCast <<RewritePattern>> { }
+    class LowerCastSign <<RewritePattern>> { }
+    class RemoveLeftoverNodeTypes <<TypeConversionPattern>> { }
+    class RemoveUnusedGlobals <<RewritePattern>> { }
+
+    class LowerTreecoPass <<ModulePass>> {
+      + apply(ctx, op)
+    }
+  }
+
+  package "bufferize" {
+    class bufferize_pass <<function>> { }
+  }
+
+  package "mlir_opt" {
+    class mlir_opt_pass <<function>> { }
+  }
+}
+@enduml

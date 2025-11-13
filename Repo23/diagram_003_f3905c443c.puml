@@ -1,0 +1,140 @@
+@startuml
+skinparam classAttributeIconSize 0
+hide circle
+skinparam packageStyle rectangle
+
+class Ext_MaterializeCSS as "CDN: materialize.min.css" <<external>>
+class Ext_MaterializeJS as "CDN: materialize.min.js" <<external>>
+class Ext_GoogleIcons as "CDN: Google Icons" <<external>>
+class Ext_AnchorJS as "CDN: anchor-js" <<external>>
+
+class D_SiteVariables as "Jekyll site.* (variables)" <<data>> {
+  baseurl
+  url
+  title
+  description
+  color.primary-dark
+  color.accent
+  color.title
+  background-image
+  year
+  venue
+  registration-page
+  organizer-email
+  map-embed
+  directions-link
+  copyright
+  dates.meeting
+  dates.application.deadline
+  dates.application.extension
+  dates.notification
+  dates.registration.deadline
+  dates.registration.extension
+}
+class D_SiteData as "Jekyll site.data.* (collections)" <<data>> {
+  past_events
+  organizers
+  steering_committee
+  program.program_rse25
+}
+class D_PageVariables as "Jekyll page.*" <<data>> {
+  title
+  url
+  applications
+  registration
+}
+
+class S_main as "assets/css/main.scss" <<sass>>
+class S_style as "_sass/_style.scss" <<sass>>
+
+S_main ..> S_style : @import "style"
+S_main ..> D_SiteVariables : Liquid variables
+
+class J_scr as "js/scr.js" <<js>> {
+  M.AutoInit()
+}
+J_scr ..> Ext_MaterializeJS
+
+class I_head as "_includes/head.html" <<include>>
+class I_nav as "_includes/nav.html" <<include>>
+class I_banner as "_includes/banner.html" <<include>>
+class I_dates as "_includes/dates.html" <<include>>
+class I_footer as "_includes/footer.html" <<include>>
+class I_js as "_includes/js.html" <<include>>
+class I_map as "_includes/map.html" <<include>>
+class I_organizers as "_includes/organizers.html" <<include>>
+class I_schedule as "_includes/schedule.html" <<include>>
+class I_schedule_orig as "_includes/schedule_original.html" <<include>>
+class I_venue as "_includes/venue.html" <<include>>
+
+class L_default as "_layouts/default.html" <<layout>>
+class L_home as "_layouts/home.html" <<layout>>
+class L_schedule as "_layouts/schedule.html" <<layout>>
+class L_single as "_layouts/single.html" <<layout>>
+
+class P_flyer as "flyer/index.html" <<page>>
+class P_registration as "registration/index.html" <<page>>
+
+L_default *-- I_head : include
+L_default *-- I_nav : include
+L_default *-- I_banner : include
+L_default o-- I_footer : include
+L_default o-- I_js : include
+
+L_home *-- I_head
+L_home *-- I_nav
+L_home *-- I_banner
+L_home *-- I_dates
+L_home o-- I_organizers
+L_home o-- I_footer
+L_home o-- I_js
+
+L_schedule *-- I_head
+L_schedule *-- I_nav
+L_schedule *-- I_banner
+L_schedule o-- I_schedule
+L_schedule o-- I_footer
+L_schedule o-- I_js
+
+L_single *-- I_head
+L_single *-- I_nav
+L_single *-- I_banner
+L_single o-- I_footer
+L_single o-- I_js
+
+I_head ..> D_PageVariables
+I_head ..> D_SiteVariables
+I_head ..> S_main : link rel=stylesheet
+I_head ..> Ext_GoogleIcons
+I_head ..> Ext_MaterializeCSS
+I_head ..> Ext_MaterializeJS : DOMContentLoaded init
+
+I_js ..> Ext_AnchorJS : <script>
+I_js ..> Ext_MaterializeJS : <script>
+I_js ..> J_scr : <script>
+I_js ..> D_SiteVariables : baseurl for js path
+
+I_banner ..> D_SiteVariables
+I_dates ..> D_SiteVariables
+I_dates ..> D_PageVariables
+I_footer ..> D_SiteVariables
+I_footer ..> D_SiteData
+I_map ..> D_SiteVariables
+I_organizers ..> D_SiteData
+I_schedule ..> D_SiteData
+I_schedule ..> Ext_MaterializeJS : collapsible UI
+I_schedule_orig ..> D_SiteData
+I_venue ..> D_SiteVariables
+
+class Ext_asset_maincss as "assets/main.css" <<external>>
+class Ext_asset_newbanner as "assets/Newbanner.jpg" <<external>>
+class Ext_favicon as "assets/favicon.png" <<external>>
+
+P_flyer ..> Ext_asset_maincss
+P_flyer ..> Ext_asset_newbanner
+P_flyer ..> Ext_favicon
+
+P_registration ..> Ext_asset_maincss
+P_registration ..> Ext_asset_newbanner
+P_registration ..> Ext_favicon
+@enduml

@@ -1,0 +1,80 @@
+@startuml 
+skinparam componentStyle rectangle
+skinparam nodesep 50
+skinparam ranksep 50
+
+' User runtime
+node "User Device" as UserDevice {
+  node "Web Browser" as Browser
+}
+
+' Build-time environment
+node "Build Environment" as Build {
+  artifact "Jekyll static site generator" as Jekyll
+}
+
+' Static hosting of the generated site
+node "Static Hosting (Jekyll-generated site)" as Hosting {
+  artifact "/flyer/index.html" as FlyerHTML
+  artifact "/registration/index.html" as RegistrationHTML
+  artifact "Generated pages using layouts/includes" as GenPages
+  artifact "/assets/css/main.css" as MainCSS
+  artifact "/js/scr.js" as ScrJS
+  artifact "Inline JS: M.Collapsible.init(...)" as InlineMInit
+  artifact "Inline JS: anchors.add(...)" as InlineAnchorInit
+  artifact "/assets/favicon.png" as Favicon <<missing>>
+  artifact "/assets/main.css" as LegacyCSS <<missing>>
+  artifact "/assets/Newbanner.jpg" as Newbanner <<missing>>
+}
+
+' Third-party CDNs and external services
+cloud "CDN: cdnjs.cloudflare.com" as CDNJS {
+  artifact "materialize.min.css (1.0.0)" as MatCSS
+  artifact "materialize.min.js (1.0.0)" as MatJS
+}
+
+cloud "CDN: jsDelivr" as JSD {
+  artifact "anchor.min.js" as AnchorJS
+}
+
+cloud "Google Fonts" as GFonts {
+  artifact "Material Icons (fonts.googleapis.com)" as MatIcons
+  artifact "Roboto / Roboto Slab (fonts.googleapis.com)" as RobotoFonts
+}
+
+cloud "Map Embed (site.map-embed)" as MapEmbed
+
+' Build-time relationship
+Jekyll --> Hosting : generates static HTML/CSS\nfrom layouts, includes, and SCSS
+
+' Runtime: browser requests static site
+UserDevice --> Hosting : HTTP(S) requests
+
+' Browser loads site artifacts from hosting
+Browser ..> FlyerHTML : loads
+Browser ..> RegistrationHTML : loads
+Browser ..> GenPages : loads
+Browser ..> MainCSS : loads
+Browser ..> ScrJS : loads
+Browser ..> InlineMInit : executes
+Browser ..> InlineAnchorInit : executes
+Browser ..> Favicon : referenced
+Browser ..> LegacyCSS : referenced by flyer/registration
+Browser ..> Newbanner : referenced by flyer
+
+' Browser fetches third-party resources (per code)
+Browser ..> MatCSS : loads Materialize CSS
+Browser ..> MatJS : loads Materialize JS
+Browser ..> AnchorJS : loads AnchorJS
+Browser ..> MatIcons : loads Material Icons
+Browser ..> RobotoFonts : loads Roboto / Roboto Slab
+
+' JS init dependencies on third-party code
+ScrJS ..> MatJS : uses M.AutoInit()
+InlineMInit ..> MatJS : uses M.Collapsible.init(...)
+InlineAnchorInit ..> AnchorJS : uses anchors.add(...)
+
+' Embedded map iframe
+Browser ..> MapEmbed : loads iframe src={{site.map-embed}}
+
+@enduml

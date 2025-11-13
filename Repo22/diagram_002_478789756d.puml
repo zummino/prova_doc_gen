@@ -1,0 +1,155 @@
+@startuml
+title Component Diagram - gamerepo
+
+actor "HTTP Client" as Client
+
+package "Gamerepo (Spring Boot)" {
+  [GamerepoApplication] <<SpringBootApplication>>
+
+  package "Web Layer" {
+    [GameController] <<REST Controller>>
+    [GlobalExceptionHandler] <<ControllerAdvice>>
+    [HttpRequestLoggerFilter] <<Filter>>
+    [FilterConfig] <<Configuration>>
+  }
+
+  package "Service Layer" {
+    [GameService] <<Service>>
+    [RoundService] <<Service>>
+    [TurnService] <<Service>>
+  }
+
+  package "Mapping Layer" {
+    [MapperFacade] <<Service>>
+    [GameMapper] <<MapStruct>>
+    [RoundMapper] <<MapStruct>>
+    [TurnMapper] <<MapStruct>>
+    [TurnScoreMapper] <<MapStruct>>
+    [PlayerResultMapper] <<MapStruct>>
+  }
+
+  package "Persistence Layer" {
+    [GameRepository] <<JpaRepository>>
+    [RoundRepository] <<JpaRepository>>
+    [TurnRepository] <<JpaRepository>>
+  }
+
+  package "Domain Model" {
+    [Game] <<Entity>>
+    [Round] <<Entity>>
+    [Turn] <<Entity>>
+    [TurnScore] <<Embeddable>>
+    [PlayerResult] <<Embeddable>>
+    [GameStatus] <<enum>>
+  }
+
+  package "DTOs" {
+    [GameDTO] <<record>>
+    [RoundDTO] <<record>>
+    [TurnDTO] <<record>>
+    [TurnScoreDTO]
+    [PlayerResultDTO]
+    [CreateGameDTO]
+    [CreateRoundDTO]
+    [CreateTurnDTO]
+    [CloseTurnDTO]
+    [CloseGameDTO]
+  }
+
+  package "Service Exceptions" {
+    [DuplicatedPlayersInGameException]
+    [FoundRoundNotClosedException]
+    [GameAlreadyClosedException]
+    [GameNotFoundException]
+    [NotPlayerTurnException]
+    [PlayerNotInGameException]
+    [RoundAlreadyClosedException]
+    [RoundNotFoundException]
+    [TurnAlreadyClosedException]
+    [TurnNotFoundException]
+  }
+}
+
+package "External" {
+  [RDBMS] <<database>>
+  [Spring MessageSource]
+  package "TRC Commons" {
+    [ApiErrorBackend]
+    [EvosuiteScoreDTO]
+    [JacocoScoreDTO]
+    [EvosuiteScore]
+    [JacocoScore]
+    [JacocoScoreMapper]
+    [EvosuiteScoreMapper]
+    [CoverageMapper]
+  }
+}
+
+' HTTP flow
+Client --> [HttpRequestLoggerFilter]
+[HttpRequestLoggerFilter] --> [GameController]
+[FilterConfig] ..> [HttpRequestLoggerFilter] : registers
+
+' Controller and exception handling
+[GameController] --> [GameService]
+[GlobalExceptionHandler] ..> [Spring Message Source]
+[GlobalExceptionHandler] ..> [ApiErrorBackend]
+
+' Services
+[GameService] --> [GameRepository]
+[GameService] --> [RoundService]
+[GameService] --> [MapperFacade]
+
+[RoundService] --> [RoundRepository]
+[RoundService] --> [TurnService]
+
+[TurnService] --> [TurnRepository]
+
+' Mappers
+[MapperFacade] --> [GameMapper]
+[MapperFacade] --> [RoundMapper]
+[MapperFacade] --> [TurnMapper]
+[MapperFacade] --> [TurnScoreMapper]
+[MapperFacade] --> [PlayerResultMapper]
+
+[GameMapper] ..> [RoundMapper]
+[GameMapper] ..> [TurnMapper]
+[GameMapper] ..> [PlayerResultMapper]
+
+[TurnScoreMapper] ..> [JacocoScoreMapper]
+[TurnScoreMapper] ..> [EvosuiteScoreMapper]
+[TurnScoreMapper] ..> [CoverageMapper]
+
+' Repositories to entities
+[GameRepository] ..> [Game]
+[RoundRepository] ..> [Round]
+[TurnRepository] ..> [Turn]
+
+' Entity relationships
+[Game] o--> [Round]
+[Game] o--> [PlayerResult]
+[Round] o--> [Turn]
+[Turn] o--> [TurnScore]
+[TurnScore] ..> [EvosuiteScore]
+[TurnScore] ..> [JacocoScore]
+
+' DTO usage
+[GameController] ..> [GameDTO]
+[GameController] ..> [RoundDTO]
+[GameController] ..> [TurnDTO]
+[GameController] ..> [CreateGameDTO]
+[GameController] ..> [CreateRoundDTO]
+[GameController] ..> [CreateTurnDTO]
+[GameController] ..> [CloseTurnDTO]
+[GameController] ..> [CloseGameDTO]
+
+[GameDTO] ..> [PlayerResultDTO]
+[TurnDTO] ..> [TurnScoreDTO]
+[TurnScoreDTO] ..> [EvosuiteScoreDTO]
+[TurnScoreDTO] ..> [JacocoScoreDTO]
+
+' Persistence connection
+[GameRepository] --> [RDBMS]
+[RoundRepository] --> [RDBMS]
+[TurnRepository] --> [RDBMS]
+@enduml

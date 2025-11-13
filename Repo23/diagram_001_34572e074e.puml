@@ -1,0 +1,60 @@
+@startuml
+title Section 2.1 - Use Case Diagram - RSE Conference Website
+
+left to right direction
+
+actor Visitor as V
+
+rectangle "RSE Conference Website" as SYS {
+  usecase "Browse About/Home" as UC_About
+  usecase "View Important Dates" as UC_Dates
+  usecase "View Schedule" as UC_Schedule
+  usecase "View Venue & Directions" as UC_Venue
+  usecase "Browse Organizers & Steering Committee" as UC_Org
+  usecase "Browse Previous Editions" as UC_Past
+  usecase "Contact Organizers via Email" as UC_Email
+  usecase "Apply (when application-page enabled)" as UC_Apply
+  usecase "Register" as UC_Register
+  usecase "Open Travel Plan Document" as UC_TravelDoc
+}
+
+V --> UC_About
+V --> UC_Dates
+V --> UC_Schedule
+V --> UC_Venue
+V --> UC_Org
+V --> UC_Past
+V --> UC_Email
+V --> UC_Apply
+V --> UC_Register
+V --> UC_TravelDoc
+
+' External systems explicitly referenced in code
+actor "Google Forms" as GF
+actor "Google Docs" as GD
+actor "Email Client" as MAIL
+actor "Google Maps" as GM
+actor "Past Event Sites" as PES
+
+' Mappings to external services (links/embeds present in code)
+UC_Register ..> GF : redirects to forms.gle
+UC_TravelDoc ..> GD : opens docs.google.com
+UC_Email ..> MAIL : mailto: organizer email
+UC_Venue ..> GM : iframe embed / maps links
+UC_Past ..> PES : links from site.data.past_events
+
+note right of UC_Apply
+Shown when site.application-page is set
+and page.applications is true.
+end note
+
+note right of UC_Register
+CTA in templates can link to site.registration-page.
+registration/index.html links to forms.gle.
+end note
+
+note right of UC_Schedule
+Rendered from site.data.program.program_rse25
+via _includes/schedule.html.
+end note
+@enduml

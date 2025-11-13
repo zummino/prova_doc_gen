@@ -1,0 +1,39 @@
+@startuml
+title Figure 2.1 — Architectural Context – Use Case Diagram
+left to right direction
+
+actor "API Client" as Client
+actor "MessageSource (i18n)" as I18N
+
+rectangle "Gamerepo REST API" as System {
+  usecase "Get a game by its Id" as UC1
+  usecase "Get all games associated with a player by ID" as UC2
+  usecase "Get all games" as UC3
+  usecase "Create a new Game" as UC4
+  usecase "Create a new Round for the specified Game" as UC5
+  usecase "Create a new Turn for the last Round in the specified Game" as UC6
+  usecase "Close the specified turn in the last turn of the specified Game" as UC7
+  usecase "Close the last round in the specified Game" as UC8
+  usecase "Close a Game specified by its Id" as UC9
+  usecase "Handle exceptions and localize error messages" as UCE
+}
+
+Client --> UC1
+Client --> UC2
+Client --> UC3
+Client --> UC4
+Client --> UC5
+Client --> UC6
+Client --> UC7
+Client --> UC8
+Client --> UC9
+
+I18N --> UCE
+
+note right of UCE
+Implemented by GlobalExceptionHandler
+using Spring MessageSource to produce
+localized ApiErrorBackend responses.
+Applies to all API use cases on error paths.
+end note
+@enduml

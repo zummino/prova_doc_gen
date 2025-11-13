@@ -1,0 +1,119 @@
+@startuml
+title RSE Static Site — Component Diagram
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+package "Layouts (_layouts)" {
+  [default.html] as layout_default
+  [home.html] as layout_home
+  [schedule.html] as layout_schedule
+  [single.html] as layout_single
+}
+
+package "Includes (_includes)" {
+  [head.html] as inc_head
+  [nav.html] as inc_nav
+  [banner.html] as inc_banner
+  [dates.html] as inc_dates
+  [organizers.html] as inc_organizers
+  [schedule.html] as inc_schedule
+  [schedule_original.html] as inc_schedule_original
+  [footer.html] as inc_footer
+  [js.html] as inc_js
+  [map.html] as inc_map
+  [venue.html] as inc_venue
+}
+
+package "Assets" {
+  [assets/css/main.scss] as scss_main
+  [_sass/_style.scss] as scss_style
+  [assets/css/main.css (generated)] as css_main
+  [js/scr.js] as js_scr
+}
+
+package "Pages" {
+  [flyer/index.html] as page_flyer
+  [registration/index.html] as page_registration
+}
+
+package "Data and Config" {
+  [site variables (site.*)] as site_vars
+  [site.data.past_events] as data_past
+  [site.data.organizers] as data_orgs
+  [site.data.steering_committee] as data_sc
+  [site.data.program.program_rse25] as data_prog
+}
+
+package "External CDNs/Services" {
+  [Materialize CSS (CDN)] as cdn_mat_css
+  [Materialize JS (CDN)] as cdn_mat_js
+  [Google Fonts] as cdn_fonts
+  [AnchorJS (CDN)] as cdn_anchor
+  [Google Maps Embed] as svc_gmaps
+}
+
+' Layout-to-include relationships
+layout_default --> inc_head
+layout_default --> inc_nav
+layout_default --> inc_banner
+layout_default --> inc_footer
+layout_default --> inc_js
+
+layout_home --> inc_head
+layout_home --> inc_nav
+layout_home --> inc_banner
+layout_home --> inc_dates
+layout_home --> inc_organizers
+layout_home --> inc_footer
+layout_home --> inc_js
+
+layout_schedule --> inc_head
+layout_schedule --> inc_nav
+layout_schedule --> inc_banner
+layout_schedule --> inc_schedule
+layout_schedule --> inc_footer
+layout_schedule --> inc_js
+
+layout_single --> inc_head
+layout_single --> inc_nav
+layout_single --> inc_banner
+layout_single --> inc_footer
+layout_single --> inc_js
+
+' Includes to external/data/assets
+inc_head --> css_main
+inc_head --> cdn_fonts
+inc_head --> cdn_mat_css
+
+inc_js --> cdn_anchor
+inc_js --> cdn_mat_js
+inc_js --> js_scr
+
+js_scr --> cdn_mat_js
+
+inc_nav --> cdn_mat_css
+inc_nav --> cdn_mat_js
+
+inc_banner --> site_vars
+inc_dates --> site_vars
+inc_organizers --> data_orgs
+inc_organizers --> data_sc
+inc_footer --> data_past
+inc_schedule --> data_prog
+inc_map --> site_vars
+inc_map --> svc_gmaps
+inc_venue --> site_vars
+inc_venue --> svc_gmaps
+
+' SCSS build chain and variable use
+scss_main --> scss_style
+scss_main --> site_vars
+scss_main --> css_main
+
+' Standalone static pages (do not use includes/layouts)
+page_flyer --> cdn_mat_css #line:transparent
+page_registration --> cdn_mat_css #line:transparent
+
+@enduml
