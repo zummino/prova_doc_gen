@@ -1,0 +1,201 @@
+@startuml 
+
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment left
+
+'========================
+' External Systems / Libraries
+'========================
+package "External Systems / Libraries" as EXT {
+  [mydockerjs.docker] as E_mydocker_docker
+  [mydockerjs.dockerComposer] as E_mydocker_compose
+  [mydockerjs.imageMgr] as E_mydocker_images
+  [mydockerjs.dockerUtils] as E_mydocker_utils
+
+  [help-nodejs.httpHelper] as E_httpHelper
+  [help-nodejs.checker] as E_checker
+
+  [simple-git] as E_simpleGit
+  [jsonfile] as E_jsonfile
+  [socket.io] as E_socketio
+  [node-pty] as E_nodepty
+  [walker] as E_walker
+  [js-yaml] as E_yaml
+  [node-stream-zip] as E_streamzip
+
+  [Filesystem] as E_fs
+  [Docker Engine] as E_docker_engine
+  [Git Remote] as E_git_remote
+}
+
+' mydockerjs bridges to Docker Engine
+E_mydocker_docker ..> E_docker_engine
+E_mydocker_compose ..> E_docker_engine
+E_mydocker_images ..> E_docker_engine
+
+' simple-git bridges to Git Remote
+E_simpleGit ..> E_git_remote
+
+'========================
+' Utilities Layer
+'========================
+package "Utilities" as P_UTIL {
+  [app/util/AppChecker.js] as U_AppChecker
+  [app/util/AppUtils.js] as U_AppUtils
+  [app/util/docker_socket.js] as U_docker_socket
+  [app/util/GitUtils.js] as U_GitUtils
+  [app/util/HealthLabState.js] as U_HealthLabState
+  [app/util/LabStates.js] as U_LabStates
+  [app/util/pathConverter.js] as U_pathConverter
+  [app/util/project_init.js] as U_project_init
+  [app/util/repogitData.js] as U_repogitData
+  [app/util/ws_docker_actions.js] as U_ws_docker_actions
+  [app/util/ws_git_manager.js] as U_ws_git_manager
+  [app/util/ws_handler.js] as U_ws_handler
+  [app/util/ws_installation.js] as U_ws_installation
+}
+
+' Utilities -> External libs
+U_AppChecker ..> E_checker
+U_AppChecker ..> E_mydocker_utils
+U_AppUtils ..> E_jsonfile
+U_AppUtils ..> E_fs
+U_AppUtils ..> E_walker
+U_docker_socket ..> E_socketio
+U_docker_socket ..> E_nodepty
+U_docker_socket ..> E_mydocker_docker
+U_docker_socket ..> E_mydocker_compose
+U_GitUtils ..> U_repogitData
+U_GitUtils ..> U_LabStates
+U_GitUtils ..> E_simpleGit
+U_HealthLabState ..> E_mydocker_compose
+U_HealthLabState ..> U_LabStates
+U_repogitData ..> E_simpleGit
+U_repogitData ..> E_walker
+U_ws_handler ..> U_ws_installation
+U_ws_handler ..> U_ws_docker_actions
+U_ws_handler ..> U_ws_git_manager
+U_ws_installation ..> U_project_init
+U_ws_installation ..> U_ws_docker_actions
+
+'========================
+' Data Layer
+'========================
+package "Data" as P_DATA {
+  [app/data/config.js] as D_config
+  [app/data/docker_actions.js] as D_docker_actions
+  [app/data/docker_capabilities.js] as D_docker_capabilities
+  [app/data/docker_filesToCopy.js] as D_docker_filesToCopy
+  [app/data/docker-converter.js] as D_docker_converter
+  [app/data/docker-images.js] as D_docker_images
+  [app/data/docker-tools.js] as D_docker_tools
+  [app/data/dockerfiles.js] as D_dockerfiles
+  [app/data/dockerVolumes.js] as D_dockerVolumes
+  [app/data/labels.js] as D_labels
+  [app/data/labs_walker.js] as D_labs_walker
+  [app/data/labs.js] as D_labs
+  [app/data/network.js] as D_network
+  [app/data/repos.js] as D_repos
+  [app/data/snippets.js] as D_snippets
+}
+
+' Data -> Utilities
+D_config ..> U_AppUtils
+D_config ..> U_AppChecker
+D_docker_actions ..> U_AppUtils
+D_docker_filesToCopy ..> U_AppUtils
+D_docker_converter ..> U_AppUtils
+D_docker_images ..> U_AppUtils
+D_docker_tools ..> U_AppUtils
+D_dockerfiles ..> U_AppUtils
+D_dockerVolumes ..> U_AppUtils
+D_labels ..> U_AppUtils
+D_labs_walker ..> U_AppUtils
+D_labs ..> U_AppUtils
+D_network ..> U_AppUtils
+D_repos ..> U_AppUtils
+
+' Data -> External libs/systems
+D_config ..> E_jsonfile
+D_docker_actions ..> E_mydocker_compose
+D_docker_filesToCopy ..> E_mydocker_compose
+D_docker_converter ..> D_docker_capabilities
+D_docker_images ..> E_mydocker_images
+D_docker_images ..> E_mydocker_docker
+D_docker_images ..> E_walker
+D_dockerfiles ..> E_simpleGit
+D_dockerVolumes ..> E_fs
+D_labels ..> E_jsonfile
+D_labs_walker ..> E_walker
+D_labs ..> E_yaml
+D_labs ..> E_streamzip
+D_labs ..> E_jsonfile
+D_labs ..> E_fs
+D_network ..> E_jsonfile
+D_network ..> E_fs
+D_repos ..> E_jsonfile
+D_snippets ..> E_jsonfile
+
+' Key Data <-> Data
+D_docker_images ..> D_network
+D_docker_actions ..> D_docker_images
+D_docker_filesToCopy ..> D_docker_actions
+D_network ..> D_docker_filesToCopy
+
+'========================
+' Handlers Layer (HTTP)
+'========================
+package "Handlers (HTTP)" as P_HANDLERS {
+  [app/handlers/config.js] as H_config
+  [app/handlers/docker-images.js] as H_docker_images
+  [app/handlers/dockerfiles.js] as H_dockerfiles
+  [app/handlers/labels.js] as H_labels
+  [app/handlers/labs.js] as H_labs
+  [app/handlers/network.js] as H_network
+  [app/handlers/repos.js] as H_repos
+  [app/handlers/services.js] as H_services
+  [app/handlers/snippets.js] as H_snippets
+  [app/handlers/tree_routes.js] as H_tree_routes
+}
+
+' Handlers -> Data (principal mappings)
+H_config ..> D_config
+H_docker_images ..> D_docker_images
+H_dockerfiles ..> D_dockerfiles
+H_labels ..> D_labels
+H_labs ..> D_labs
+H_network ..> D_network
+H_repos ..> D_repos
+H_services ..> D_docker_tools
+H_snippets ..> D_snippets
+H_tree_routes ..> D_network
+
+' Handlers -> Utilities and http helper
+P_HANDLERS ..> P_UTIL : uses helpers, state, socket
+P_HANDLERS ..> E_httpHelper
+
+' Package-level dependencies
+P_DATA ..> P_UTIL
+P_DATA ..> EXT
+P_UTIL ..> EXT
+
+legend right
+  Layers:
+    Handlers: HTTP controllers
+    Data: domain/data services
+    Utilities: cross-cutting services
+
+  External:
+    mydockerjs*: Docker integration
+    simple-git: Git integration
+    httpHelper/checker: API plumbing & validation
+    Filesystem/socket.io/node-pty: local I/O and WS shell
+
+  Notes:
+    - Only code-backed dependencies are shown.
+    - Handlers map 1:1 to their Data modules where applicable.
+endlegend
+
+@enduml

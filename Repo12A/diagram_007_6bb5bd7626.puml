@@ -1,0 +1,70 @@
+@startuml 
+skinparam shadowing false
+skinparam linetype polyline
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+
+node "User Workstation" as User {
+  node "Web Browser" as Browser
+}
+
+node "Host Machine" as Host {
+  node "Node.js Process\n'DockerSecurityPlayground'" as NodeApp {
+    component "REST/HTTP Handlers\n(app/handlers/*)" as REST
+    component "WebSocket Controller\n(app/util/ws_handler.js)" as WSCtrl
+    component "PTY/Socket.IO Bridge\n(app/util/docker_socket.js)\npath: /webshell/socket.io" as PTY
+    artifact "Config files\nconfig/config_user.json\nconfig/local.config.json" as ConfigFiles
+    folder "User Data\n$HOME/<mainDir>/*" as UserData
+    component "mydockerjs client\n(docker, dockerComposer, imageMgr)" as MyDockerJS
+    component "Git tooling\n(simple-git, node-cmd)" as GitLib
+  }
+
+  node "Docker Engine (dockerd)\nlocal socket" as Docker {
+    node "Compose Stacks per Lab\n$HOME/<mainDir>/<repo>/<lab>" as Compose {
+      artifact "docker-compose.yml" as ComposeFile
+      node "Lab Containers\n(default names: <lab>_<service>_1)" as LabContainers
+    }
+    node "Managed Services\n(prefix: dsp_hacktool_*)" as Services {
+      node "Kali\n(dockersecplayground/kali:latest)" as Kali
+      node "Hack Browser\n(dockersecplayground/hackbrowser:v1.0)" as BrowserSvc
+      node "Wireshark\n(ffeldhaus/wireshark)" as Wireshark
+      node "Tcpdump\n(itsthenetwork/alpine-tcpdump)" as Tcpdump
+      node "HTTPD\n(httpd:2.4)" as Httpd
+    }
+    artifact "Named Volume\nDSP_VOLUME_NAME='dsp_volume'\nmounted as /dsp, /shared, ..." as DSPVol
+  }
+
+  folder "Downloads\napp/public/downloads" as Downloads
+}
+
+cloud "Git Provider\n(SSH/HTTPS)" as GitCloud
+cloud "Docker Registry\n(pull/push images)" as Registry
+
+' Client ↔ Server
+Browser --> REST : HTTP(S) requests\n(e.g., labs, network, images, repos)
+Browser --> WSCtrl : WebSocket: actions/progress\n(e.g., docker_up/down, build, pull)
+Browser --> PTY : WebSocket: interactive shell\n(/webshell/socket.io)
+
+' Server ↔ Docker / Compose
+REST --> MyDockerJS : docker.*, imageMgr.*\ndockerComposer.*
+WSCtrl --> MyDockerJS : Orchestrates builds/runs
+PTY --> MyDockerJS : docker exec / compose exec
+
+' Server ↔ Filesystem
+REST --> UserData : Read/Write\nnetwork.json, labels.json,\ninformation.json, .dockerfiles/*
+REST --> Downloads : cp/zip extracted/copied files
+
+' mydockerjs ↔ Docker / Registry
+MyDockerJS --> Docker : Local Docker API socket\nand docker-compose CLI
+MyDockerJS --> Registry : image pull/push
+
+' Docker runtime
+Docker ..> DSPVol : Attach volume to tools/services
+Docker --> LabContainers
+Docker --> Services
+
+' Server ↔ Git
+REST --> GitLib : clone/pull/push
+GitLib --> GitCloud : git+ssh / https
+
+@enduml

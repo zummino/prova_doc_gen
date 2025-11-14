@@ -1,0 +1,198 @@
+@startuml 
+
+
+skinparam classAttributeIconSize 0
+skinparam stereotypeFontStyle bold
+
+package "app/data" {
+
+class "Data.config" <<module>> {
+  +getUserPath(callback)
+  +getMainDir(callback)
+  +getLabelFile(callback)
+  +getConfig(callback)
+  +updateConfig(data, callback)
+  +version
+}
+
+class "Data.docker_actions" <<module>> {
+  +getActionsSync(clistToDraw)
+  +getActions(clistToDraw, cb)
+  +getComposeOptions(clistToDraw)
+  +getCommand(a)
+}
+
+class "Data.docker_capabilities" <<module>> {
+  +check(cap)
+}
+
+class "Data.docker_filesToCopy" <<module>> {
+  +cleanPath(clist)
+  +getAllFiles(network)
+  +copyBeforeActions(mainDir, repoName, thePath, clistToDraw, cb)
+  +copyAfterActions(mainDir, repoName, thePath, clistToDraw, cb)
+}
+
+class "Data.docker-converter" <<module>> {
+  +JDCTemplate()
+  +JDCGetContainerNetworks(container)
+  +JDCGetServices(containers)
+  +JDCGetNetworks(networkList)
+  +JSONDockerComposeConvert(containers, networkList)
+}
+
+class "Data.docker-images" <<module>> {
+  +buildImages(thepath, callback, notifyBuild)
+  +getRepoImages(namerepo, callback)
+  +getImagesLab(reponame, labname, allImages, imagesToBuild, callback)
+  +getImagesLabNames(reponame, labname, callback)
+  +getImagesAllLabs(namerepo, callback)
+  +getImagesAllRepos(callback)
+  +areImagesInstalled(labImages, callback)
+  +getListImages(callback)
+  +getListHackTools(callback)
+}
+
+class "Data.docker-tools" <<module>> {
+  +getServices(callback)
+  +isService(name)
+  +runService(image, name, options, callback)
+  +startService(nameService, callback)
+  +runHttpdService(callback, hostPort, notifyCallback)
+  +runWireshark(callback, hostPort, notifyCallback)
+  +runTcpdump(callback, lab, machinesToBeSniffed, sessionName, notifyCallback)
+  +isHttpdServiceInstalled(callback)
+  +isWiresharkInstalled(callback)
+  +isTcpdumpInstalled(callback)
+  +installHttpdService(callback, notifyCallback)
+  +stopHttpdService(callback)
+  +stopKaliService(callback)
+  +runKaliService(callback)
+  +runBrowserService(callback, hostPort)
+  +isBrowserServiceRun(callback)
+  +isBrowserServiceInstalled(callback)
+  +stopBrowserService(callback)
+  +installProxyService(callback, notifyCallback)
+  +isKaliServiceRun(callback)
+  +isKaliServiceInstalled(callback)
+  +installKaliService(callback, notifyCallback)
+  +installBrowserService(callback, notifyCallback)
+  +installWireshark(callback, notifyCallback)
+  +installTcpdump(callback, notifyCallback)
+  +isHttpdServiceRun(callback)
+  +isTcpdumpRun(callback)
+  +stopWireshark(callback)
+  +stopTcpdump(callback)
+  +stopService(nameService, callback)
+  +removeService(nameService, callback)
+  +deleteHackTool(name, callback)
+  +attachServiceToNetwork(nameService, networkName, callback)
+  +detachServiceToNetwork(nameService, networkName, callback)
+  +getInfoContainer(nameContainer, callback)
+  +getNetworksLab(nameLab, callback)
+  +findRouterIp(nameNetwork, callback)
+  +setDefaultGW(nameService, ipRouter, callback)
+  +get(name)
+}
+
+class "Data.dockerfiles" <<module>> {
+  +createDockerfile(name, options, callback)
+  +getDockerfiles(callback)
+  +getImageNames(callback)
+  +editDockerfile(name, content, callback)
+  +removeDockerfile(name, callback)
+  +getDockerfile(name, callback)
+}
+
+class "Data.dockerVolumes" <<module>> {
+  +destroyOldVolumes(nameLab, clistToDraw, clistNotToDraw, callback)
+  +createVolumeDirs(nameLab, clistToDraw, callback)
+}
+
+class "Data.labels" <<module>> {
+  +initLabels(labelName, cb)
+  +deleteLabel(filename, name, isUserRepo, callback)
+  +getLabels(labelname, callback)
+  +getLabel(labelfile, name, callback)
+  +existsLabel(labelname, callback)
+  +changeLabel(labelfile, labelname, newLabel, callback)
+  +createLabel(labelname, data, callback)
+  +createLabels(labelname, arr, callback)
+  +version
+}
+
+class "Data.labs_walker" <<module>> {
+  +create()
+}
+
+class "Data.labs" <<module>> {
+  +newLab(name, information, callback)
+  +existLab(repoName, labName, callback)
+  +existLabUser(labName, callback)
+  +newLabFromCompose(nameLab, composeFileStream, override, callback)
+  +deleteLab(name, callback)
+  +saveLabels(labName, labels, callback)
+  +renameLab(oldName, newName, cb)
+  +saveInformation(name, information, callback)
+  +getInformation(nameRepo, nameLab, callback)
+  +getLabUserInformation(nameLab, callback)
+  +getLabs(thePath, callback)
+  +isValidZip(b, needToRemove, callback)
+}
+
+class "Data.network" <<module>> {
+  +save(namelab, data, yamlfile, callback)
+  +saveWithoutCompose(namelab, data, callback)
+  +get(namerepo, namelab, callback)
+  +isImported(namerepo, namelab, callback)
+  +networkExists(namerepo, namelab, callback)
+  +canDeleteFile(filename, callback)
+}
+
+class "Data.repos" <<module>> {
+  +get(cb)
+  +post(repo, cb)
+  +exists(cb)
+  +remove(reponame, cb)
+  +create(repos, cb)
+  +update(repo, cb)
+  +version
+}
+
+class "Data.snippets" <<module>> {
+  +getSnippets(snippetsname, callback)
+}
+
+' Selected data->util dependencies (from require)
+"Data.config" ..> "Util.AppUtils" : uses
+"Data.config" ..> "Util.AppChecker" : uses
+"Data.docker_actions" ..> "Data.docker-images" : uses
+"Data.docker_actions" ..> "Util.AppUtils" : uses
+"Data.docker_filesToCopy" ..> "Util.AppUtils" : uses
+"Data.docker_filesToCopy" ..> "Util.AppUtils" : uses getHome()
+"Data.docker-converter" ..> "Data.docker_capabilities" : uses
+"Data.docker-converter" ..> "Util.AppUtils" : uses
+"Data.docker-images" ..> "Data.network" : uses
+"Data.docker-images" ..> "Util.AppUtils" : uses
+"Data.docker-tools" ..> "Util.AppUtils" : uses
+"Data.dockerfiles" ..> "Data.config" : uses
+"Data.dockerfiles" ..> "Util.AppUtils" : uses
+"Data.dockerVolumes" ..> "Data.config" : uses
+"Data.dockerVolumes" ..> "Util.AppUtils" : uses
+"Data.labels" ..> "Data.labs" : uses
+"Data.labels" ..> "Util.AppUtils" : uses
+"Data.labs_walker" ..> "Util.AppUtils" : uses
+"Data.labs" ..> "Data.labels" : uses
+"Data.labs" ..> "Data.network" : uses
+"Data.labs" ..> "Data.config" : uses
+"Data.labs" ..> "Util.AppUtils" : uses
+"Data.labs" ..> "Util.LabStates" : uses
+"Data.network" ..> "Data.config" : uses
+"Data.network" ..> "Util.AppUtils" : uses
+"Data.network" ..> "Util.AppChecker" : uses
+"Data.network" ..> "Util.LabStates" : uses
+"Data.repos" ..> "Data.config" : uses
+"Data.repos" ..> "Util.AppUtils" : uses
+"Data.repos" ..> "Util.LabStates" : uses
+
+@enduml

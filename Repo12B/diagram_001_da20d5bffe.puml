@@ -1,0 +1,112 @@
+@startuml
+left to right direction
+
+actor "DSP User" as User
+actor "DSP Backend API" as API
+actor "WebSocket Server" as WS
+
+rectangle "DSP Web UI (AngularJS)" as System {
+  usecase "Install DSP" as UC_install
+  usecase "Configure DSP\n(name, repo, GitHub URL)" as UC_config
+  usecase "Synchronize GitHub" as UC_sync
+  usecase "Pull Personal Repo" as UC_pull
+  usecase "Push Personal Repo" as UC_push
+  usecase "Update Projects" as UC_update_projects
+  usecase "Update Application" as UC_update_app
+
+  usecase "Manage Repositories\n(add/update/remove, update all)" as UC_repos
+  usecase "Manage Labels\n(create/edit/remove)" as UC_labels
+
+  usecase "Browse Labs" as UC_browse
+  usecase "Create Lab" as UC_new
+  usecase "Edit Lab Info\n(description, goal, solution, readme)" as UC_edit_info
+  usecase "Edit Network Graph\n(add container/network, ports, env,\nvolumes, actions, files, save/export compose)" as UC_graph
+  usecase "Use Lab" as UC_use
+  usecase "Start Lab" as UC_start
+  usecase "Stop Lab" as UC_stop
+  usecase "View Lab Logs & Compose" as UC_logs
+
+  usecase "Open Container Shell" as UC_shell
+  usecase "Copy From Container" as UC_copy_from
+  usecase "Copy Into Container" as UC_copy_in
+
+  usecase "Manage Images\n(list/download/build/delete)" as UC_images
+  usecase "Manage Dockerfiles\n(create/edit/delete)" as UC_dockerfiles
+  usecase "Edit Dockerfile & Build/Push Image" as UC_edit_dockerfile
+  usecase "Download Lab Images" as UC_lab_images
+
+  usecase "Managed Services\n(start/stop kali, browser, httpd)" as UC_managed
+  usecase "Hack Tools\n(run one-line/interactive)" as UC_hacktools
+
+  usecase "Monitoring\n(start/stop Wireshark,\nstart/stop tcpdump capture)" as UC_monitor
+
+  usecase "Attach/Detach Service to Network\n& Set Default Route" as UC_service_net
+}
+
+' Primary user interactions
+User --> UC_install
+User --> UC_config
+User --> UC_sync
+User --> UC_pull
+User --> UC_push
+User --> UC_update_projects
+User --> UC_update_app
+
+User --> UC_repos
+User --> UC_labels
+
+User --> UC_browse
+User --> UC_new
+User --> UC_edit_info
+User --> UC_graph
+User --> UC_use
+User --> UC_start
+User --> UC_stop
+User --> UC_logs
+
+User --> UC_shell
+User --> UC_copy_from
+User --> UC_copy_in
+
+User --> UC_images
+User --> UC_dockerfiles
+User --> UC_edit_dockerfile
+User --> UC_lab_images
+
+User --> UC_managed
+User --> UC_hacktools
+User --> UC_monitor
+User --> UC_service_net
+
+' HTTP API integrations ($http)
+UC_config --> API
+UC_repos --> API
+UC_labels --> API
+UC_browse --> API
+UC_new --> API
+UC_edit_info --> API
+UC_graph --> API
+UC_use --> API
+UC_images --> API
+UC_dockerfiles --> API
+UC_edit_dockerfile --> API
+UC_lab_images --> API
+UC_service_net --> API
+UC_shell --> API
+UC_copy_from --> API
+UC_copy_in --> API
+
+' WebSocket integrations (SocketService / Socket.IO)
+UC_install --> WS
+UC_sync --> WS
+UC_update_projects --> WS
+UC_update_app --> WS
+UC_start --> WS
+UC_stop --> WS
+UC_images --> WS
+UC_edit_dockerfile --> WS
+UC_managed --> WS
+UC_hacktools --> WS
+UC_monitor --> WS
+
+@enduml

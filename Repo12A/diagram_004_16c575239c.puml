@@ -1,0 +1,156 @@
+@startuml 
+
+
+skinparam classAttributeIconSize 0
+skinparam stereotypeFontStyle bold
+
+package "app/util" {
+
+class "Util.AppChecker" <<module>> {
+  +initErrors()
+  +initConditions()
+  +init(callback)
+  +AppConditions
+  +JoiAppConditions
+  +errorLabNoStopped(statesRunning)
+  +errorCannotDelete(filename, labname)
+  +errorDirAlreadyExists()
+  +checkParams(data, fieldNames, callback)
+  +checkString(data, callback)
+  +checkAlphabetic(data, callback)
+  +isInstalled(cb)
+  +checkGitUrl(data, callback)
+  +checkEmail(data, callback)
+  +checkIfRepoIsPrivateAndValid(repo, isUpdate, callback)
+}
+
+class "Util.AppUtils" <<module>> {
+  +getLocalConfig(cb)
+  +renameDir(oldPath, newPath, callback)
+  +copy(srcPath, dstPath, cb)
+  +getFile(srcPath, cb)
+  +path_userconfig()
+  +getConfigSync()
+  +getLogger()
+  +getDSPDirs(repoName, callback)
+  +getAllDSPDirsSync()
+  +getUserDSPDirsSync()
+  +getDSPDirsSync(repoName)
+  +response(nameService, res, err, respo)
+  +isDSPDir(dir, callback)
+  +isYaml(yc)
+  +getRandomName()
+  +getHome()
+  +storeTmpFile(pathFile, callback)
+  +removeTmpFile(randomName, callback)
+  +restoreTmpFile(randomName, originalPath, callback)
+}
+
+class "Util.docker_socket" <<module>> {
+  +setDockerShell(dockerInfos)
+  +init(httpserv)
+}
+
+class "Util.GitUtils" <<module>> {
+  +initRepository(repo, callback, notifyCallback)
+  +buildImages(repoName, callback, notifyCallback)
+  +updateRepoUrl(repo, callback)
+}
+
+class "Util.HealthLabState" <<module>> {
+  +run(cb, debug)
+}
+
+class "Util.LabStates" <<module>> {
+  +setRunningState(repoName, nameLab, callback)
+  +setNoNetworkState(repoName, nameLab, callback)
+  +setStopState(repoName, nameLab, callback)
+  +getState(repoName, labName, callback)
+  +getStates(callback)
+  +getRepoStates(repoName, callback)
+  +getStateSync(repoName, labName)
+  +getStatesSync()
+  +exists(repoName, labName, callback)
+  +existsSync(repoName, labName)
+  +editState(repoName, labName, objState, callback)
+  +editStates(repoName, objState, callback)
+  +newState(repoName, labName, state, callback)
+  +newStateSync(repoName, labName, state)
+  +removeState(repoName, labName, callback)
+  +removeStates(repoName, callback)
+  +removeDirtyStates(allDirs, cb)
+  +initStates(repoName, callback)
+  +checkSome(repoName, state, callback)
+  +checkAll(repoName, state, callback)
+}
+
+class "Util.pathConverter" <<module>> {
+  +convertToRelative(p, rootPath)
+  +dirnames(p)
+  +getTree(data, rootPath)
+  +makeTreeDir(dir)
+  +makeTreeFile(f, content, isExecutable)
+}
+
+class "Util.project_init" <<module>> {
+  +createConfig(nameConfig, config, callback)
+  +createDSP(nameConfig, repo, callback, notifyCallback)
+  +initRepos(callback, notifyCallback)
+}
+
+class "Util.repogitData" <<module>> {
+  +clone(giturl, params, callback)
+  +getRepoDirs(nameRepo, callback)
+  +getGitUrl(url, params)
+  +pullApplication(callback)
+  +pullRepo(params, callback)
+  +pushRepo(params, callback)
+  +updateRepoUrl(reponame, username, token, url, callback)
+}
+
+class "Util.ws_docker_actions" <<module>> {
+  +areImagesInstalled(params, callback)
+  +build(params, body, callback, notifyCallback)
+  +dockerRun(params, callback, notifyCallback)
+  +composeUp(params, body, callback, notifyCallback)
+  +httpdRun(body, callback, notifyCallback)
+  +captureRun(body, callback, notifyCallback)
+  +kaliRun(callback, notifyCallback)
+  +browserRun(body, callback, notifyCallback)
+  +wiresharkRun(body, callback, notifyCallback)
+  +composeDown(params, body, callback, notifyCallback)
+  +downloadImages(params, body, callback, notifyCallback)
+  +removeImage(params, body, callback)
+}
+
+class "Util.ws_git_manager" <<module>> {
+  +synchronizeLocalGithub(params, callback)
+  +updateApplication(callback)
+  +addProject(repo, callback)
+  +updateProject(repo, callback)
+  +updateProjects(callback)
+  +editRepository(repo, callback)
+  +pullPersonalRepo(callback)
+  +pushPersonalRepo(commitMessage, callback)
+}
+
+class "Util.ws_handler" <<module>> {
+  +init(server)
+}
+
+class "Util.ws_installation" <<module>> {
+  +installation(config, repo, callback, notifyCallback)
+}
+
+' Key intra-util dependencies
+"Util.ws_handler" ..> "Util.ws_installation" : uses
+"Util.ws_handler" ..> "Util.ws_docker_actions" : uses
+"Util.ws_handler" ..> "Util.ws_git_manager" : uses
+"Util.ws_git_manager" ..> "Util.GitUtils" : uses
+"Util.GitUtils" ..> "Util.LabStates" : uses
+"Util.HealthLabState" ..> "Util.LabStates" : uses
+"Util.repogitData" ..> "Util.AppUtils" : uses
+"Util.project_init" ..> "Util.GitUtils" : uses
+"Util.project_init" ..> "Util.AppUtils" : uses
+
+@enduml

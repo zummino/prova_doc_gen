@@ -1,0 +1,166 @@
+@startuml 
+
+
+skinparam classAttributeIconSize 0
+skinparam stereotypeFontStyle bold
+
+package "app/handlers" {
+
+class "Handlers.config" <<module>> {
+  +updateConfig(req, res)
+  +getConfig(req, res)
+}
+
+class "Handlers.docker-images" <<module>> {
+  +getImagesRepo(req, res)
+  +getImagesLab(req, res)
+  +getImagesAllRepos(req, res)
+  +saveTempDockerfile(req, res)
+}
+
+class "Handlers.dockerfiles" <<module>> {
+  +getDockerFiles(req, res)
+  +getDockerFile(req, res)
+  +createDockerFile(req, res)
+  +deleteDockerFile(req, res)
+  +editDockerFile(req, res)
+}
+
+class "Handlers.labels" <<module>> {
+  +deleteLabel(req, res)
+  +allLabels(req, res)
+  +labelsOfLab(req, res)
+  +addLabelToLab(req, res)
+  +updateLabel(req, res)
+  +addLabel(req, res)
+}
+
+class "Handlers.labs" <<module>> {
+  +uploadCompose(req, res)
+  +deleteLab(req, res)
+  +getAll(req, res)
+  +getLabs(req, res)
+  +getInformation(req, res)
+  +getLabUserInformation(req, res)
+  +saveInformation(req, res)
+  +newLab(req, res)
+  +copyLab(req, res)
+  +importLab(req, res)
+}
+
+class "Handlers.network" <<module>> {
+  +save(req, res)
+  +get(req, res)
+  +isImported(req, res)
+  +getUser(req, res)
+  +getListImages(req, res)
+  +dirExists(req, res)
+  +dockershell(req, res)
+  +dockercopy(req, res)
+  +dockerupload(req, res)
+}
+
+class "Handlers.repos" <<module>> {
+  +get(req, res)
+  +remove(req, res)
+}
+
+class "Handlers.services" <<module>> {
+  +getServices(req, res)
+  +runService(req, res)
+  +startService(req, res)
+  +stopService(req, res)
+  +removeService(req, res)
+  +getNetworkList(req, res)
+  +attachNetwork(req, res)
+  +detachNetwork(req, res)
+  +setAsDefault(req, res)
+  +getListHackTools(req, res)
+  +deleteHackTool(req, res)
+  +isHttpdRun(req, res)
+  +isBrowserRun(req, res)
+  +stopHttpd(req, res)
+  +isKaliRun(req, res)
+  +stopKali(req, res)
+  +stopBrowser(req, res)
+  +isWiresharkRun(req, res)
+  +stopWireshark(req, res)
+  +isTcpdumpRun(req, res)
+  +stopTcpdump(req, res)
+}
+
+class "Handlers.snippets" <<module>> {
+  +allSnippets(req, res)
+}
+
+class "Handlers.tree_routes" <<module>> {
+  +resourceSearch(req)
+  +projectTreeSearch(req, res)
+  +treeSearch(req, res)
+  +uploadFile(req, res)
+  +deleteFile(req, res)
+}
+
+}
+
+' Selected handler->data/util dependencies (from require)
+"Handlers.config" ..> "Data.config" : uses
+"Handlers.config" ..> "Util.AppChecker" : uses
+"Handlers.config" ..> "Util.AppUtils" : uses
+"Handlers.config" ..> "Util.LabStates" : uses
+
+"Handlers.docker-images" ..> "Data.docker-images" : uses
+"Handlers.docker-images" ..> "Data.dockerfiles" : uses
+"Handlers.docker-images" ..> "Util.AppUtils" : uses
+"Handlers.docker-images" ..> "Util.AppChecker" : uses
+
+"Handlers.dockerfiles" ..> "Data.dockerfiles" : uses
+"Handlers.dockerfiles" ..> "Util.AppUtils" : uses
+"Handlers.dockerfiles" ..> "Util.AppChecker" : uses
+
+"Handlers.labels" ..> "Data.labels" : uses
+"Handlers.labels" ..> "Data.config" : uses
+"Handlers.labels" ..> "Util.AppUtils" : uses
+"Handlers.labels" ..> "Util.AppChecker" : uses
+
+"Handlers.labs" ..> "Data.labs" : uses
+"Handlers.labs" ..> "Data.labels" : uses
+"Handlers.labs" ..> "Data.config" : uses
+"Handlers.labs" ..> "Data.network" : uses
+"Handlers.labs" ..> "Data.docker_filesToCopy" : uses
+"Handlers.labs" ..> "Util.AppUtils" : uses
+"Handlers.labs" ..> "Util.LabStates" : uses
+"Handlers.labs" ..> "Util.AppChecker" : uses
+"Handlers.labs" ..> "Data.labs_walker" : uses
+
+"Handlers.network" ..> "Data.network" : uses
+"Handlers.network" ..> "Data.dockerVolumes" : uses
+"Handlers.network" ..> "Data.dockerfiles" : uses
+"Handlers.network" ..> "Data.config" : uses
+"Handlers.network" ..> "Util.LabStates" : uses
+"Handlers.network" ..> "Util.AppUtils" : uses
+"Handlers.network" ..> "Util.docker_socket" : uses
+"Handlers.network" ..> "Data.docker-images" : uses
+"Handlers.network" ..> "Data.docker-converter" : uses
+
+"Handlers.repos" ..> "Data.repos" : uses
+"Handlers.repos" ..> "Util.AppUtils" : uses
+"Handlers.repos" ..> "Util.AppChecker" : uses
+
+"Handlers.services" ..> "Data.network" : uses
+"Handlers.services" ..> "Data.config" : uses
+"Handlers.services" ..> "Util.AppUtils" : uses
+"Handlers.services" ..> "Data.docker-converter" : uses
+"Handlers.services" ..> "Data.docker-images" : uses
+"Handlers.services" ..> "Data.docker-tools" : uses
+
+"Handlers.snippets" ..> "Data.snippets" : uses
+"Handlers.snippets" ..> "Data.config" : uses
+"Handlers.snippets" ..> "Util.AppUtils" : uses
+"Handlers.snippets" ..> "Util.AppChecker" : uses
+
+"Handlers.tree_routes" ..> "Data.config" : uses
+"Handlers.tree_routes" ..> "Util.AppUtils" : uses
+"Handlers.tree_routes" ..> "Data.network" : uses
+
+@enduml

@@ -1,0 +1,113 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+
+' End-user environment
+node "End-User Device" as ClientDevice {
+  node "Web Browser" as Browser {
+    artifact "DSP AngularJS SPA\n(public/app, public/views)" as Spa
+    artifact "Web Terminal Page (hterm)\n(public/webshell/webshell.js)" as WebShell
+  }
+}
+
+' Server-side host (same origin referenced by the frontend)
+node "DSP Server (same origin)" as DspServer {
+  artifact "Static Files\n(public/*)" as StaticFiles
+
+  node "REST API" as RestApi <<HTTP>> {
+    artifact "/dsp_v1/*" as DspV1
+    artifact "/api/tree/repo" as RepoTree
+  }
+
+  node "WebSocket Endpoint" as WsApi <<WS>> {
+    artifact "ws://host/ (JSON actions)" as WsControl
+  }
+
+  node "Socket.IO Endpoint" as Sio <<WS_SocketIO>> {
+    artifact "Socket.IO namespace\n/webshell/socket.io" as SioShell
+  }
+}
+
+' --------------------
+' Links
+' --------------------
+
+' Static hosting
+Browser --> StaticFiles : GET static assets\n(HTML, JS, CSS)
+
+' SPA <-> REST
+Spa --> RestApi : HTTP(S)\n$http to REST routes
+
+' SPA <-> WebSocket control
+Spa ..> WsApi : WebSocket (ws://host)\nJSON action messages
+
+' Web terminal <-> Socket.IO
+WebShell ..> Sio : Socket.IO (path=/webshell/socket.io)
+
+' --------------------
+' Notes / Descriptions
+' --------------------
+
+note right of Spa
+AngularJS SPA:
+- controllers/services in public/app
+- uses $http against same-origin REST
+- uses $websocket (ws://host)
+- opens web terminal page when needed
+end note
+
+note right of WebShell
+hterm terminal page:
+- frontend terminal emulator
+- Socket.IO client: io(location.origin,
+  { path: '/webshell/socket.io' })
+- emits: input, resize
+- receives: output, exit
+end note
+
+note right of DspV1
+Observed REST endpoints:
+- /dsp_v1/docker_network/...
+- /dsp_v1/docker_images/...
+- /dsp_v1/dsp_images/...
+- /dsp_v1/services/...
+- /dsp_v1/dockerfiles/...
+- /dsp_v1/hack_tools
+- /dsp_v1/networkservices
+- /dsp_v1/snippets/
+- /dsp_v1/labs/...
+- /dsp_v1/config
+- /dsp_v1/all
+- /dsp_v1/labels/...
+- /dsp_v1/git-repos
+- /dsp_v1/dockercopy
+- /dsp_v1/dockerupload
+- /dsp_v1/dockershell
+end note
+
+note right of RepoTree
+REST endpoint used by SPA:
+- /api/tree/repo
+Returns repository tree metadata.
+end note
+
+note right of WsControl
+Angular's $websocket connects to ws://host
+and exchanges JSON commands for:
+- lifecycle: docker_up, docker_down
+- images: download_images, docker_build, remove_image
+- git ops: update_projects, pull_personal_repo,
+  push_personal_repo, installation
+- managed services: kali_run, browser_run, httpd_run
+- monitoring: wireshark_run, capture_run
+end note
+
+note right of SioShell
+Socket.IO namespace /webshell/socket.io:
+- receives: input, resize
+- emits: output, exit
+Bridges hterm keystrokes to backend shell.
+end note
+
+@enduml

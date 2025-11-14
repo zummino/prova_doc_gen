@@ -1,0 +1,155 @@
+@startuml
+
+actor User as user
+actor "Docker Engine/Compose" as docker
+actor "Git Remote" as git
+
+rectangle "DSP Backend" as system {
+  package "Configuration" {
+    usecase "Get Configuration\n(handlers/config.getConfig)" as UC_GetConfig
+    usecase "Update Configuration\n(handlers/config.updateConfig)" as UC_UpdateConfig
+    usecase "Initial Installation\n(util/ws_installation.installation)" as UC_Install
+  }
+
+  package "Repositories" {
+    usecase "List Repositories\n(handlers/repos.get)" as UC_ReposGet
+    usecase "Add Repository\n(util/ws_git_manager.addProject)" as UC_RepoAdd
+    usecase "Update Repository\n(util/ws_git_manager.updateProject[s])" as UC_RepoUpdate
+    usecase "Remove Repository\n(handlers/repos.remove)" as UC_RepoRemove
+    usecase "Sync Local Repo with Remote\n(util/ws_git_manager.synchronizeLocalGithub,\npull_personal_repo, push_personal_repo)" as UC_RepoSync
+    usecase "Update Application\n(util/ws_git_manager.updateApplication)" as UC_AppUpdate
+  }
+
+  package "Labs" {
+    usecase "List Labs in Repo / All\n(handlers/labs.getLabs, getAll)" as UC_LabsList
+    usecase "Create/Copy Lab\n(handlers/labs.newLab, copyLab)" as UC_LabCreateCopy
+    usecase "Import Lab / Upload Compose\n(handlers/labs.importLab, uploadCompose)" as UC_LabImport
+    usecase "Get Lab Information\n(handlers/labs.getInformation, getLabUserInformation)" as UC_LabInfo
+    usecase "Save Lab Info & Labels\n(handlers/labs.saveInformation)" as UC_LabSave
+    usecase "Delete Lab\n(handlers/labs.deleteLab)" as UC_LabDelete
+  }
+
+  package "Network & Execution" {
+    usecase "Save Network\n(handlers/network.save)" as UC_NetSave
+    usecase "Get Network / Is Imported / Get User\n(handlers/network.get, isImported, getUser)" as UC_NetGet
+    usecase "Compose Up/Down\n(util/ws_docker_actions.composeUp/composeDown)" as UC_Compose
+    usecase "Web Shell\n(handlers/network.dockershell*)" as UC_Shell
+    usecase "Copy From/To Container\n(handlers/network.dockercopy, dockerupload)" as UC_Copy
+    usecase "List Images for Network\n(handlers/network.getListImages)" as UC_NetImages
+  }
+
+  package "Dockerfiles" {
+    usecase "List Dockerfiles\n(handlers/dockerfiles.getDockerFiles)" as UC_DfList
+    usecase "Create Dockerfile\n(handlers/dockerfiles.createDockerFile)" as UC_DfCreate
+    usecase "Get Dockerfile (tree)\n(handlers/dockerfiles.getDockerFile)" as UC_DfGet
+    usecase "Edit Dockerfile\n(handlers/dockerfiles.editDockerFile)" as UC_DfEdit
+    usecase "Delete Dockerfile\n(handlers/dockerfiles.deleteDockerFile)" as UC_DfDelete
+    usecase "Build Image from Dockerfile\n(util/ws_docker_actions.build)" as UC_DfBuild
+  }
+
+  package "Images" {
+    usecase "List Images (All Repos)\n(handlers/docker-images.getImagesAllRepos)" as UC_ImgAll
+    usecase "List Lab Images & Check Install\n(handlers/docker-images.getImagesLab, areImagesInstalled)" as UC_ImgLab
+    usecase "Pull Image\n(util/ws_docker_actions.downloadImages)" as UC_ImgPull
+    usecase "Remove Image\n(util/ws_docker_actions.removeImage)" as UC_ImgRemove
+  }
+
+  package "Services (Hack Tools)" {
+    usecase "Get Services\n(handlers/services.getServices)" as UC_SvcList
+    usecase "Run/Start/Stop/Remove Service\n(handlers/services.runService, startService,\nstopService, removeService)" as UC_SvcControl
+    usecase "Attach/Detach Network, Set Default GW\n(handlers/services.attachNetwork, detachNetwork, setAsDefault)" as UC_SvcNet
+    usecase "Managed Tools: Kali/Browser/HTTPD/Wireshark/Tcpdump\n(handlers/services.*Run/Stop/Is*)\n(util/ws_docker_actions.*Run)" as UC_Tools
+    usecase "List Hack Tools\n(handlers/services.getListHackTools)" as UC_ToolsList
+    usecase "Delete One-line Hack Tool\n(handlers/services.deleteHackTool)" as UC_ToolDelete
+  }
+
+  package "Labels" {
+    usecase "List Repo Labels\n(handlers/labels.allLabels)" as UC_LabelListRepo
+    usecase "List Lab Labels\n(handlers/labels.labelsOfLab)" as UC_LabelListLab
+    usecase "Add/Update/Delete Label\n(handlers/labels.addLabel, updateLabel, deleteLabel)" as UC_LabelCRUD
+  }
+
+  package "Snippets" {
+    usecase "Get Official Snippets\n(handlers/snippets.allSnippets)" as UC_SnippetsAll
+  }
+
+  package "File Tree (.data)" {
+    usecase "Browse Tree\n(handlers/tree_routes.projectTreeSearch, treeSearch)" as UC_TreeBrowse
+    usecase "Upload File/Dir to .data\n(handlers/tree_routes.uploadFile)" as UC_FileUpload
+    usecase "Delete File/Dir from .data\n(handlers/tree_routes.deleteFile)" as UC_FileDelete
+  }
+}
+
+' Associations: User initiates all application use cases
+user --> UC_GetConfig
+user --> UC_UpdateConfig
+user --> UC_Install
+
+user --> UC_ReposGet
+user --> UC_RepoAdd
+user --> UC_RepoUpdate
+user --> UC_RepoRemove
+user --> UC_RepoSync
+user --> UC_AppUpdate
+
+user --> UC_LabsList
+user --> UC_LabCreateCopy
+user --> UC_LabImport
+user --> UC_LabInfo
+user --> UC_LabSave
+user --> UC_LabDelete
+
+user --> UC_NetSave
+user --> UC_NetGet
+user --> UC_Compose
+user --> UC_Shell
+user --> UC_Copy
+user --> UC_NetImages
+
+user --> UC_DfList
+user --> UC_DfCreate
+user --> UC_DfGet
+user --> UC_DfEdit
+user --> UC_DfDelete
+user --> UC_DfBuild
+
+user --> UC_ImgAll
+user --> UC_ImgLab
+user --> UC_ImgPull
+user --> UC_ImgRemove
+
+user --> UC_SvcList
+user --> UC_SvcControl
+user --> UC_SvcNet
+user --> UC_Tools
+user --> UC_ToolsList
+user --> UC_ToolDelete
+
+user --> UC_LabelListRepo
+user --> UC_LabelListLab
+user --> UC_LabelCRUD
+
+user --> UC_SnippetsAll
+
+user --> UC_TreeBrowse
+user --> UC_FileUpload
+user --> UC_FileDelete
+
+' Secondary actors: Docker and Git are involved in the following use cases
+docker -- UC_Compose
+docker -- UC_Shell
+docker -- UC_Copy
+docker -- UC_NetImages
+docker -- UC_DfBuild
+docker -- UC_ImgPull
+docker -- UC_ImgRemove
+docker -- UC_SvcList
+docker -- UC_SvcControl
+docker -- UC_SvcNet
+docker -- UC_Tools
+
+git -- UC_RepoAdd
+git -- UC_RepoUpdate
+git -- UC_RepoSync
+git -- UC_AppUpdate
+@enduml

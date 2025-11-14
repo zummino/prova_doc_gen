@@ -1,0 +1,378 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+hide methods
+hide stereotypes
+
+' Stereotypes
+' <<controller>>, <<service>>, <<component>>, <<directive>>, <<filter>>, <<class>>
+
+package "Components" {
+  class dsp_changeGithub <<component>> {
+    + templateUrl: views/changeGithub.html
+  }
+  class dsp_copyFromContainer <<component>> {
+    + templateUrl: views/copyFromContainer.html
+  }
+  class dsp_copyInContainer <<component>> {
+    + templateUrl: views/copyInContainer.html
+  }
+  class dsp_deleteConfirmComponent <<component>> {
+    + templateUrl: views/deleteConfirm.html
+  }
+  class dsp_dockerfileComponent <<component>> {
+    + templateUrl: views/dockerfileComponent.html
+  }
+  class dsp_imagesDownloadComponent <<component>> {
+    + templateUrl: views/imagesDownloadComponent.html
+  }
+  class dsp_isolatedForm <<directive>>
+  package "jsTree.directive module" {
+    class jsTree <<directive>>
+  }
+  class basenameFilter <<filter>>
+}
+
+package "Controllers" {
+  class dsp_ConfigCtrl <<controller>>
+  class DSP_DockerToolsCtrl <<controller>>
+  class dsp_dockerfileCtrl <<controller>>
+  class DSP_GraphActionController <<controller>>
+  class DSP_GraphEditorController <<controller>>
+  class dsp_HackToolsCtrl <<controller>>
+  class dsp_ImagesCtrl <<controller>>
+  class dsp_InstallationCtrl <<controller>>
+  class dsp_LabCtrl <<controller>>
+  class dsp_LabelsCtrl <<controller>>
+  class dsp_LabsCtrl <<controller>>
+  class dsp_MainCtrl <<controller>>
+  class DSP_ManagedToolsCtrl <<controller>>
+  class DSP_MonitorCtrl <<controller>>
+  class dsp_RepoCtrl <<controller>>
+}
+
+package "Services" {
+  class dsp_AjaxService <<service>>
+  class dsp_BreadCrumbs <<service>>
+  class dsp_cleanerService <<service>>
+  class dsp_Constants <<service>>
+  class dsp_ContainerManagerService <<service>>
+  class dsp_currentLab <<service>>
+  class DockerAPIService <<service>>
+  class dsp_imagesService <<service>>
+  class IncrementNumber <<service>>
+  class DSP_infoService <<service>>
+  class dsp_networkManagerService <<service>>
+  class dsp_portService <<service>>
+  class dsp_Queue <<service>>
+  class dsp_regex_service <<service>>
+  class dsp_server_response <<service>>
+  class SafeApply <<service>>
+  class SocketService <<service>>
+  class gp_StateManager <<class>>
+  class dsp_WalkerService <<service>>
+}
+
+package "Webshell" {
+  class Webshell <<class>>
+}
+
+'==========================
+' Filter implementation
+'==========================
+basenameFilter --> "String.prototype.replace" : uses
+
+'==========================
+' Component controller injections
+'==========================
+dsp_copyFromContainer ..> $http
+dsp_copyFromContainer ..> Notification
+
+dsp_copyInContainer ..> $http
+dsp_copyInContainer ..> Notification
+
+dsp_dockerfileComponent ..> $http
+dsp_dockerfileComponent ..> $scope
+dsp_dockerfileComponent ..> $location
+dsp_dockerfileComponent ..> Notification
+dsp_dockerfileComponent ..> Upload
+dsp_dockerfileComponent ..> $timeout
+dsp_dockerfileComponent ..> SafeApply
+dsp_dockerfileComponent ..> SocketService
+dsp_dockerfileComponent ..> DockerAPIService
+
+dsp_imagesDownloadComponent ..> $scope
+dsp_imagesDownloadComponent ..> dsp_server_response
+dsp_imagesDownloadComponent ..> $log
+dsp_imagesDownloadComponent ..> SocketService
+dsp_imagesDownloadComponent ..> dsp_imagesService
+dsp_imagesDownloadComponent ..> DockerAPIService
+dsp_imagesDownloadComponent ..> $routeParams
+dsp_imagesDownloadComponent ..> $sce
+dsp_imagesDownloadComponent ..> SafeApply
+dsp_imagesDownloadComponent ..> $document
+dsp_imagesDownloadComponent ..> $uibModal
+dsp_imagesDownloadComponent ..> $location
+dsp_imagesDownloadComponent ..> $http
+dsp_imagesDownloadComponent ..> cfpLoadingBar
+dsp_imagesDownloadComponent ..> dsp_currentLab
+dsp_imagesDownloadComponent ..> dsp_cleanerService
+dsp_imagesDownloadComponent ..> dsp_BreadCrumbs
+dsp_imagesDownloadComponent ..> dsp_AjaxService
+dsp_imagesDownloadComponent ..> containerManager : uses
+dsp_imagesDownloadComponent ..> dsp_WalkerService
+dsp_imagesDownloadComponent ..> Notification
+
+jsTree ..> $http
+
+'==========================
+' Controllers -> Services (Angular injection)
+'==========================
+dsp_ConfigCtrl ..> SafeApply
+dsp_ConfigCtrl ..> dsp_regex_service
+dsp_ConfigCtrl ..> dsp_BreadCrumbs
+dsp_ConfigCtrl ..> SocketService
+dsp_ConfigCtrl ..> $uibModal
+dsp_ConfigCtrl ..> dsp_Constants
+dsp_ConfigCtrl ..> dsp_server_response
+dsp_ConfigCtrl ..> Notification
+dsp_ConfigCtrl ..> $http
+dsp_ConfigCtrl ..> dsp_currentLab
+dsp_ConfigCtrl ..> $location
+dsp_ConfigCtrl ..> dsp_AjaxService
+dsp_ConfigCtrl ..> FetchFileFactory
+
+DSP_DockerToolsCtrl ..> $location
+DSP_DockerToolsCtrl ..> Notification
+DSP_DockerToolsCtrl ..> SafeApply
+DSP_DockerToolsCtrl ..> SocketService
+DSP_DockerToolsCtrl ..> IncrementNumber
+DSP_DockerToolsCtrl ..> DockerAPIService
+DSP_DockerToolsCtrl ..> dsp_imagesService
+
+dsp_dockerfileCtrl ..> SafeApply
+dsp_dockerfileCtrl ..> $routeParams
+dsp_dockerfileCtrl ..> dsp_BreadCrumbs
+dsp_dockerfileCtrl ..> SocketService
+dsp_dockerfileCtrl ..> $uibModal
+dsp_dockerfileCtrl ..> dsp_Constants
+dsp_dockerfileCtrl ..> dsp_server_response
+dsp_dockerfileCtrl ..> Notification
+dsp_dockerfileCtrl ..> $http
+dsp_dockerfileCtrl ..> dsp_currentLab
+dsp_dockerfileCtrl ..> $location
+dsp_dockerfileCtrl ..> dsp_AjaxService
+dsp_dockerfileCtrl ..> FetchFileFactory
+
+DSP_GraphActionController ..> $sce
+DSP_GraphActionController ..> SocketService
+DSP_GraphActionController ..> dsp_cleanerService
+DSP_GraphActionController ..> $uibModal
+DSP_GraphActionController ..> $log
+DSP_GraphActionController ..> $http
+DSP_GraphActionController ..> $location
+DSP_GraphActionController ..> $window
+DSP_GraphActionController ..> cfpLoadingBar
+DSP_GraphActionController ..> DockerAPIService
+DSP_GraphActionController ..> dsp_ContainerManagerService
+DSP_GraphActionController ..> Notification
+
+DSP_GraphEditorController ..> $routeParams
+DSP_GraphEditorController ..> dsp_AjaxService
+DSP_GraphEditorController ..> $uibModal
+DSP_GraphEditorController ..> dsp_regex_service
+DSP_GraphEditorController ..> $log
+DSP_GraphEditorController ..> $http
+DSP_GraphEditorController ..> $location
+DSP_GraphEditorController ..> $window
+DSP_GraphEditorController ..> dsp_networkManagerService
+DSP_GraphEditorController ..> SocketService
+DSP_GraphEditorController ..> dsp_portService
+DSP_GraphEditorController ..> DockerAPIService
+DSP_GraphEditorController ..> dsp_ContainerManagerService
+DSP_GraphEditorController ..> DSP_infoService
+DSP_GraphEditorController ..> SafeApply
+DSP_GraphEditorController ..> Notification
+DSP_GraphEditorController ..> dependsFilter
+
+dsp_HackToolsCtrl ..> dsp_server_response
+dsp_HackToolsCtrl ..> $log
+dsp_HackToolsCtrl ..> SocketService
+dsp_HackToolsCtrl ..> dsp_imagesService
+dsp_HackToolsCtrl ..> DockerAPIService
+dsp_HackToolsCtrl ..> $routeParams
+dsp_HackToolsCtrl ..> $sce
+dsp_HackToolsCtrl ..> SafeApply
+dsp_HackToolsCtrl ..> $document
+dsp_HackToolsCtrl ..> $uibModal
+dsp_HackToolsCtrl ..> $location
+dsp_HackToolsCtrl ..> $http
+dsp_HackToolsCtrl ..> cfpLoadingBar
+dsp_HackToolsCtrl ..> dsp_currentLab
+dsp_HackToolsCtrl ..> dsp_cleanerService
+dsp_HackToolsCtrl ..> dsp_BreadCrumbs
+dsp_HackToolsCtrl ..> dsp_AjaxService
+dsp_HackToolsCtrl ..> dsp_WalkerService
+dsp_HackToolsCtrl ..> Notification
+
+dsp_ImagesCtrl ..> $log
+dsp_ImagesCtrl ..> SafeApply
+dsp_ImagesCtrl ..> dsp_WalkerService
+dsp_ImagesCtrl ..> dsp_regex_service
+dsp_ImagesCtrl ..> dsp_BreadCrumbs
+dsp_ImagesCtrl ..> SocketService
+dsp_ImagesCtrl ..> $uibModal
+dsp_ImagesCtrl ..> dsp_Constants
+dsp_ImagesCtrl ..> dsp_server_response
+dsp_ImagesCtrl ..> Notification
+dsp_ImagesCtrl ..> $http
+dsp_ImagesCtrl ..> dsp_currentLab
+dsp_ImagesCtrl ..> $location
+dsp_ImagesCtrl ..> $anchorScroll
+dsp_ImagesCtrl ..> $timeout
+dsp_ImagesCtrl ..> dsp_AjaxService
+dsp_ImagesCtrl ..> DockerAPIService
+dsp_ImagesCtrl ..> FetchFileFactory
+
+dsp_InstallationCtrl ..> dsp_server_response
+dsp_InstallationCtrl ..> SocketService
+dsp_InstallationCtrl ..> SafeApply
+dsp_InstallationCtrl ..> dsp_regex_service
+dsp_InstallationCtrl ..> $http
+dsp_InstallationCtrl ..> $scope
+dsp_InstallationCtrl ..> $window
+dsp_InstallationCtrl ..> Notification
+
+dsp_LabCtrl ..> $window
+dsp_LabCtrl ..> dsp_server_response
+dsp_LabCtrl ..> $log
+dsp_LabCtrl ..> SocketService
+dsp_LabCtrl ..> dsp_imagesService
+dsp_LabCtrl ..> DockerAPIService
+dsp_LabCtrl ..> $routeParams
+dsp_LabCtrl ..> $sce
+dsp_LabCtrl ..> SafeApply
+dsp_LabCtrl ..> $document
+dsp_LabCtrl ..> $uibModal
+dsp_LabCtrl ..> $location
+dsp_LabCtrl ..> $http
+dsp_LabCtrl ..> cfpLoadingBar
+dsp_LabCtrl ..> dsp_currentLab
+dsp_LabCtrl ..> dsp_cleanerService
+dsp_LabCtrl ..> dsp_BreadCrumbs
+dsp_LabCtrl ..> dsp_AjaxService
+dsp_LabCtrl ..> dsp_ContainerManagerService
+dsp_LabCtrl ..> dsp_WalkerService
+dsp_LabCtrl ..> Notification
+
+dsp_LabelsCtrl ..> $route
+dsp_LabelsCtrl ..> Notification
+dsp_LabelsCtrl ..> dsp_WalkerService
+dsp_LabelsCtrl ..> SafeApply
+dsp_LabelsCtrl ..> $uibModal
+dsp_LabelsCtrl ..> $http
+dsp_LabelsCtrl ..> dsp_BreadCrumbs
+dsp_LabelsCtrl ..> dsp_currentLab
+dsp_LabelsCtrl ..> dsp_AjaxService
+dsp_LabelsCtrl ..> $location
+dsp_LabelsCtrl ..> $anchorScroll
+
+dsp_LabsCtrl ..> dsp_AjaxService
+dsp_LabsCtrl ..> dsp_currentLab
+dsp_LabsCtrl ..> dsp_BreadCrumbs
+dsp_LabsCtrl ..> dsp_WalkerService
+dsp_LabsCtrl ..> $location
+
+dsp_MainCtrl ..> $location
+dsp_MainCtrl ..> dsp_BreadCrumbs
+dsp_MainCtrl ..> dsp_AjaxService
+dsp_MainCtrl ..> dsp_currentLab
+dsp_MainCtrl ..> dsp_WalkerService
+
+DSP_ManagedToolsCtrl ..> $location
+DSP_ManagedToolsCtrl ..> Notification
+DSP_ManagedToolsCtrl ..> SafeApply
+DSP_ManagedToolsCtrl ..> SocketService
+DSP_ManagedToolsCtrl ..> IncrementNumber
+DSP_ManagedToolsCtrl ..> DockerAPIService
+DSP_ManagedToolsCtrl ..> dsp_imagesService
+
+DSP_MonitorCtrl ..> $routeParams
+DSP_MonitorCtrl ..> $location
+DSP_MonitorCtrl ..> Notification
+DSP_MonitorCtrl ..> SafeApply
+DSP_MonitorCtrl ..> SocketService
+DSP_MonitorCtrl ..> IncrementNumber
+DSP_MonitorCtrl ..> DockerAPIService
+DSP_MonitorCtrl ..> dsp_imagesService
+
+dsp_RepoCtrl ..> $log
+dsp_RepoCtrl ..> SafeApply
+dsp_RepoCtrl ..> dsp_WalkerService
+dsp_RepoCtrl ..> dsp_regex_service
+dsp_RepoCtrl ..> dsp_BreadCrumbs
+dsp_RepoCtrl ..> SocketService
+dsp_RepoCtrl ..> $uibModal
+dsp_RepoCtrl ..> dsp_Constants
+dsp_RepoCtrl ..> dsp_server_response
+dsp_RepoCtrl ..> Notification
+dsp_RepoCtrl ..> $http
+dsp_RepoCtrl ..> dsp_currentLab
+dsp_RepoCtrl ..> $location
+dsp_RepoCtrl ..> dsp_AjaxService
+dsp_RepoCtrl ..> DockerAPIService
+dsp_RepoCtrl ..> FetchFileFactory
+dsp_RepoCtrl ..> $anchorScroll
+
+'==========================
+' Service dependencies (constructor injections)
+'==========================
+dsp_AjaxService ..> $http
+dsp_AjaxService ..> $q
+dsp_AjaxService ..> $log
+dsp_AjaxService ..> dsp_WalkerService
+dsp_AjaxService ..> Notification
+dsp_AjaxService ..> $location
+
+dsp_cleanerService ..> $location
+
+DockerAPIService ..> $log
+DockerAPIService ..> $http
+DockerAPIService ..> dsp_ContainerManagerService
+DockerAPIService ..> Notification
+
+dsp_imagesService ..> DockerAPIService
+dsp_imagesService ..> Notification
+
+dsp_server_response ..> Notification
+
+SocketService ..> $websocket
+
+dsp_WalkerService ..> $log
+
+DSP_infoService ..> gp_StateManager
+
+'==========================
+' Cross-cutting relations (common use)
+'==========================
+' Controllers commonly use Notification, SocketService, DockerAPIService, AjaxService, WalkerService, etc.
+' Draw a few aggregating associations to highlight common dependencies.
+
+Controllers -[#gray]-> Notification : many controllers use
+Controllers -[#gray]-> SocketService : many controllers use
+Controllers -[#gray]-> DockerAPIService : many controllers use
+Controllers -[#gray]-> dsp_AjaxService : many controllers use
+Controllers -[#gray]-> dsp_WalkerService : used in several
+
+'==========================
+' Webshell integration
+'==========================
+Webshell ..> hterm.Terminal : via runtime (lib.init) <<uses>>
+Webshell ..> SocketService : via socket.io (server-side channel)
+
+@enduml

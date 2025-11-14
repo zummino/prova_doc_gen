@@ -1,0 +1,22 @@
+@startuml 
+
+
+skinparam packageStyle rectangle
+skinparam stereotypeFontStyle bold
+skinparam classAttributeIconSize 0
+
+package "app/handlers" as Handlers {
+}
+
+package "app/data" as Data {
+}
+
+package "app/util" as Util {
+}
+
+' High-level dependency directions (as observed from require usage):
+Handlers ..> Data : uses
+Handlers ..> Util : uses
+Data ..> Util : uses
+
+@enduml

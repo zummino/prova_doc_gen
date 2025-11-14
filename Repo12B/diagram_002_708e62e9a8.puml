@@ -1,0 +1,195 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 250
+
+
+package "DSP Frontend (AngularJS App)" {
+
+  package "Controllers" {
+    component "ConfigCtrl\n(dsp_ConfigCtrl)" as ctrlConfig
+    component "DockerToolsCtrl\n(DSP_DockerToolsCtrl)" as ctrlDockerTools
+    component "DockerfileCtrl\n(dsp_dockerfileCtrl)" as ctrlDockerfile
+    component "GraphActionController\n(DSP_GraphActionController)" as ctrlGraphAction
+    component "GraphEditorController\n(DSP_GraphEditorController)" as ctrlGraphEditor
+    component "HackToolsCtrl\n(dsp_HackToolsCtrl)" as ctrlHacktools
+    component "ImagesCtrl\n(dsp_ImagesCtrl)" as ctrlImages
+    component "InstallationCtrl\n(dsp_InstallationCtrl)" as ctrlInstallation
+    component "LabCtrl\n(dsp_LabCtrl)" as ctrlLab
+    component "LabelsCtrl\n(dsp_LabelsCtrl)" as ctrlLabels
+    component "LabsCtrl\n(dsp_LabsCtrl)" as ctrlLabs
+    component "MainCtrl\n(dsp_MainCtrl)" as ctrlMain
+    component "ManagedToolsCtrl\n(DSP_ManagedToolsCtrl)" as ctrlManagedTools
+    component "MonitorCtrl\n(DSP_MonitorCtrl)" as ctrlMonitor
+    component "RepoCtrl\n(dsp_RepoCtrl)" as ctrlRepo
+  }
+
+  package "Services" {
+    component "AjaxService\n(dsp_AjaxService)" as svcAjax
+    component "BreadCrumbs\n(dsp_BreadCrumbs)" as svcBread
+    component "CleanerService\n(dsp_cleanerService)" as svcCleaner
+    component "Constants\n(dsp_Constants)" as svcConst
+    component "ContainerManagerService\n(dsp_ContainerManagerService)" as svcContainerMgr
+    component "CurrentLabService\n(dsp_currentLab)" as svcCurrentLab
+    component "DockerAPIService" as svcDocker
+    component "ImagesService\n(dsp_imagesService)" as svcImages
+    component "IncrementNumber" as svcInc
+    component "InfoService\n(DSP_infoService)" as svcInfo
+    component "NetworkManagerService\n(dsp_networkManagerService)" as svcNetwork
+    component "PortService\n(dsp_portService)" as svcPort
+    component "Queue\n(dsp_Queue)" as svcQueue
+    component "RegexService\n(dsp_regex_service)" as svcRegex
+    component "ServerResponse\n(dsp_server_response)" as svcResp
+    component "SafeApply\n(SafeApply)" as svcSafeApply
+    component "SocketService" as svcSocket
+    component "StateManager\n(gp_StateManager)" as svcStateManager
+    component "WalkerService\n(dsp_WalkerService)" as svcWalker
+  }
+
+  package "Components & Directives" {
+    component "DockerfileComponent\n(dsp_dockerfileComponent)" as cmpDockerfile
+    component "CopyFromContainerComponent\n(dsp_copyFromContainer)" as cmpCopyFrom
+    component "CopyInContainerComponent\n(dsp_copyInContainer)" as cmpCopyIn
+    component "DeleteConfirmComponent\n(dsp_deleteConfirmComponent)" as cmpDeleteConfirm
+    component "ImagesDownloadComponent\n(dsp_imagesDownloadComponent)" as cmpImagesDownload
+    component "ChangeGithub Component\n(dsp_changeGithub)" as cmpChangeGithub
+
+    component "Directive: isolatedForm\n(dsp_isolatedForm)" as dirIsolated
+    component "Directive: jsTree\n(jsTree.directive)" as dirJsTree
+    component "Filter: basename\n(appFilters.js)" as fltBasename
+  }
+
+  package "Web Terminal" {
+    component "Webshell\n(public/webshell/webshell.js)" as webshell
+    component "hterm\n(public/webshell/hterm_all.js)" as hterm
+  }
+}
+
+'==================
+' External systems
+'==================
+node "DSP Backend API\n(/dsp_v1/*, /api/tree/repo)" as api
+node "WebSocket API\n(ws://<host>)" as wsrv
+node "Socket.IO Webshell\n(/webshell/socket.io)" as sio
+
+'==================
+' Service-to-Backend interactions
+'==================
+svcAjax --> api : $http to /dsp_v1/*, /dsp_v1/all,\n/dsp_v1/config, /dsp_v1/labels,\n/dsp_v1/labs, /dsp_v1/git-repos,\n/api/tree/repo
+svcDocker --> api : $http to /dsp_v1/docker_network/*,\n/dsp_v1/docker_images/*,\n/dsp_v1/services/*,\n/dsp_v1/dockerfiles/*,\n/dsp_v1/hack_tools,\n/dsp_v1/networkservices,\n/dsp_v1/snippets
+svcImages --> svcDocker : wraps DockerAPIService
+svcSocket --> wsrv : $websocket ws://<host>
+
+webshell --> sio : Socket.IO /webshell/socket.io
+
+'==================
+' Component dependencies (selected core edges)
+'==================
+
+' Controllers to core services
+ctrlConfig --> svcAjax
+ctrlConfig --> svcSocket
+ctrlConfig --> svcCurrentLab
+ctrlConfig --> svcRegex
+ctrlConfig --> svcBread
+ctrlConfig --> svcConst
+ctrlConfig --> svcResp
+ctrlConfig --> api : $http (/api/tree/repo)
+
+ctrlDockerTools --> svcDocker
+ctrlDockerTools --> svcImages
+ctrlDockerTools --> svcSocket
+ctrlDockerTools --> svcInc
+ctrlDockerTools --> svcSafeApply
+
+ctrlDockerfile --> cmpDockerfile
+
+ctrlGraphAction --> svcDocker
+ctrlGraphAction --> svcSocket
+ctrlGraphAction --> svcContainerMgr
+ctrlGraphAction --> svcCleaner
+
+ctrlGraphEditor --> svcDocker
+ctrlGraphEditor --> svcNetwork
+ctrlGraphEditor --> svcPort
+ctrlGraphEditor --> svcContainerMgr
+ctrlGraphEditor --> svcInfo
+ctrlGraphEditor --> svcSafeApply
+ctrlGraphEditor --> api : $http (/dsp_v1/docker_images*)
+
+ctrlHacktools --> svcDocker
+ctrlHacktools --> svcImages
+
+ctrlImages --> svcDocker
+ctrlImages --> svcAjax
+ctrlImages --> svcSocket
+ctrlImages --> svcBread
+ctrlImages --> svcRegex
+ctrlImages --> svcCurrentLab
+
+ctrlInstallation --> svcSocket
+ctrlInstallation --> svcResp
+ctrlInstallation --> svcRegex
+ctrlInstallation --> svcSafeApply
+
+ctrlLab --> svcAjax
+ctrlLab --> svcWalker
+ctrlLab --> svcDocker
+ctrlLab --> svcImages
+ctrlLab --> svcSocket
+ctrlLab --> svcCleaner
+ctrlLab --> svcCurrentLab
+ctrlLab --> svcContainerMgr
+ctrlLab --> svcBread
+
+ctrlLabels --> svcAjax
+ctrlLabels --> svcWalker
+ctrlLabels --> svcBread
+ctrlLabels --> svcCurrentLab
+ctrlLabels --> svcSafeApply
+
+ctrlLabs --> svcAjax
+ctrlLabs --> svcWalker
+ctrlLabs --> svcBread
+ctrlLabs --> svcCurrentLab
+
+ctrlMain --> svcBread
+ctrlMain --> svcAjax
+ctrlMain --> svcWalker
+ctrlMain --> svcCurrentLab
+
+ctrlManagedTools --> svcDocker
+ctrlManagedTools --> svcSocket
+ctrlManagedTools --> svcImages
+
+ctrlMonitor --> svcDocker
+ctrlMonitor --> svcSocket
+
+ctrlRepo --> svcAjax
+ctrlRepo --> svcWalker
+ctrlRepo --> svcBread
+ctrlRepo --> svcRegex
+ctrlRepo --> svcSocket
+ctrlRepo --> svcDocker
+ctrlRepo --> svcResp
+
+' Components/directives usage
+cmpDockerfile --> svcDocker
+cmpDockerfile --> svcSocket
+cmpDockerfile --> svcSafeApply
+
+cmpCopyFrom --> api : $http (/dsp_v1/dockercopy)
+cmpCopyIn  --> api : $http (/dsp_v1/dockerupload)
+cmpImagesDownload --> svcDocker
+cmpImagesDownload --> svcImages
+cmpImagesDownload --> svcSocket
+cmpChangeGithub --> ctrlConfig
+
+dirJsTree --> api : $http (treeSrc/treeAjax)
+dirIsolated -[hidden]-> Controllers
+fltBasename -[hidden]-> Components
+
+' Webshell composition
+webshell --> hterm
+
+@enduml
