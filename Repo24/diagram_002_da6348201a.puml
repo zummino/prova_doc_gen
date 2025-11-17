@@ -1,0 +1,69 @@
+@startuml 
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+left to right direction
+
+package "CLI Converters" {
+  component "docx2audio.py" as docx2
+  component "ebook2audio.py" as ebook2
+  component "pdf2audio.py" as pdf2
+  component "pptx2audio.py" as pptx2
+  component "txt2audio.py" as txt2
+}
+
+package "Frontend" {
+  component "frontend.input_tool" as input_tool
+}
+
+package "Backend Audio" {
+  component "backend_audio.m4b" as m4b
+  component "backend_audio.ffmetadata_generator" as ffmeta
+}
+
+package "External Libraries" {
+  component "python-docx" as lib_docx
+  component "lxml + zipfile" as lib_epub
+  component "PyMuPDF (fitz) + fontTools" as lib_pdf
+  component "python-pptx" as lib_pptx
+
+  component "ffmpeg-python + ffmpeg binary" as lib_ffmpeg
+  component "TinyTag" as lib_tinytag
+  component "edge_tts" as lib_edge
+  component "gtts" as lib_gtts
+  component "pyttsx3" as lib_pytts
+}
+
+' Converters use frontend CLI parsing
+docx2 --> input_tool
+ebook2 --> input_tool
+pdf2   --> input_tool
+pptx2  --> input_tool
+txt2   --> input_tool
+
+' Converters use backend audio and (where applicable) metadata
+docx2 --> m4b
+ebook2 --> m4b
+pdf2   --> m4b
+pptx2  --> m4b
+txt2   --> m4b
+
+docx2 --> ffmeta
+ebook2 --> ffmeta
+pdf2   --> ffmeta
+
+' Converters use format-specific libraries
+docx2 --> lib_docx
+ebook2 --> lib_epub
+pdf2   --> lib_pdf
+pptx2  --> lib_pptx
+
+' Backend audio uses external TTS engines and ffmpeg
+m4b --> lib_edge
+m4b --> lib_gtts
+m4b --> lib_pytts
+m4b --> lib_ffmpeg
+
+' Metadata generator uses TinyTag to compute durations
+ffmeta --> lib_tinytag
+
+@enduml

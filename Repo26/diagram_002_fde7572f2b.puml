@@ -1,0 +1,71 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+package "examples" {
+  [examples.simple_example] as ex_simple
+  [examples.demo1] as ex_demo
+}
+
+package "graphic_novel" {
+  [graphic_novel (core)] as core
+  [actions] as actions
+  [character_vn] as character_vn
+  [constants] as constants
+  [input_handler] as input_handler
+  [layout_commands] as layout_commands
+
+  package "dlg_parser" {
+    [ast_dialog] as ast
+    [parser_dialog] as parser
+  }
+}
+
+package "External" {
+  [arcade] <<external>> as arcade
+  [pyglet.math.Vec2] <<external>> as pyglet_vec2
+  [json] <<external>> as jsonlib
+}
+
+package "Resources" {
+  [Dialog JSON Files] <<resource>> as dlg_json
+  [Arcade Built-in Resources] <<resource>> as arcade_res
+}
+
+' Entry points -> Core and external libs
+ex_simple --> core
+ex_demo   --> core
+ex_simple --> arcade
+ex_demo   --> arcade
+ex_simple --> pyglet_vec2
+
+' Core -> Subsystems and external libs
+core --> input_handler
+core --> actions
+core --> character_vn
+core --> constants
+core --> parser
+core --> ast
+core --> arcade
+
+' Input handling
+input_handler --> layout_commands
+input_handler --> arcade
+layout_commands --> constants
+
+' Parsing
+parser --> ast
+parser --> jsonlib
+parser --> dlg_json
+
+' Actions and Character handling
+actions --> constants
+actions --> character_vn
+actions --> arcade
+actions --> arcade_res
+
+' Character sprites rely on Arcade Sprite API
+character_vn --> arcade
+
+@enduml

@@ -1,0 +1,50 @@
+@startuml
+
+left to right direction
+
+actor GameDeveloper as Dev
+actor Player as Player
+actor "Arcade Library" as Arcade
+actor "Resource Store\n(JSON, images)" as Resources
+
+rectangle "GraphicNovel Framework" as System {
+  usecase "Create GraphicNovel view\n(GraphicNovel())" as UC_Create
+  usecase "Configure characters\n(.characters setter)" as UC_Chars
+  usecase "Register events\n(add_event)" as UC_Events
+  usecase "Load dialog from JSON\n(setup -> parser_dialog.parsing)" as UC_Load
+  usecase "Remap input keys\n(input_handler.change_key)" as UC_Keymap
+  usecase "Start and show view\n(window.show_view)" as UC_Show
+  usecase "Advance dialog\n(ENTER or mapped key -> next_dlg_command)" as UC_Next
+  usecase "Toggle skipping\n(TAB or mapped key -> skip_dlg_command)" as UC_Skip
+  usecase "Hide/Show GUI\n(H or mapped key -> hide_gui_command)" as UC_Hide
+  usecase "Pick menu choice\n(UIFlatButton click)" as UC_Menu
+  usecase "Submit text/int input\n(UIInputText + event)" as UC_Input
+  usecase "Render & update\n(on_draw, update)" as UC_Render
+  usecase "Load textures/backgrounds\n(load_texture, resources)" as UC_Tex
+  usecase "End-of-dialog callback\n(on_ended)" as UC_End
+}
+
+Dev --> UC_Create
+Dev --> UC_Chars
+Dev --> UC_Events
+Dev --> UC_Load
+Dev --> UC_Keymap
+Dev --> UC_Show
+Dev --> UC_End
+
+Player --> UC_Next
+Player --> UC_Skip
+Player --> UC_Hide
+Player --> UC_Menu
+Player --> UC_Input
+
+Arcade --> UC_Render
+Arcade --> UC_Tex
+
+Resources --> UC_Load
+Resources --> UC_Tex
+
+UC_Render .> UC_Show : depends on
+UC_Load .> UC_Tex : uses
+
+@enduml

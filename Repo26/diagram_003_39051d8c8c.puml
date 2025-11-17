@@ -1,0 +1,227 @@
+@startuml
+set namespaceSeparator .
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "graphic_novel.dlg_parser.ast_dialog" as ast {
+  abstract class Node {
+    - inner : int
+    + children() : any
+  }
+
+  class RootDialog {
+    + file_name : str
+    + blocks : Dict[str, BlockInstr]
+    + children() : tuple
+  }
+
+  class Dialog {
+    + char_name : str
+    + text : str
+    + action : List[str]
+    + children() : tuple
+  }
+
+  class BlockInstr {
+    + label : str
+    + block : List[Node]
+    + children() : tuple
+  }
+
+  class Menu {
+    + type_menu : str
+    + cases : List[BlockInstr]
+    + children() : tuple
+  }
+
+  class Request {
+    + type_request : str
+    + event_name : str
+    + children() : tuple
+  }
+
+  class Jump {
+    + name : str
+    + children() : tuple
+  }
+
+  Node <|-- RootDialog
+  Node <|-- Dialog
+  Node <|-- BlockInstr
+  Node <|-- Menu
+  Node <|-- Request
+  Node <|-- Jump
+
+  RootDialog "1" o-- "1..*" BlockInstr : blocks
+  BlockInstr "1" o-- "0..*" Node : block
+  Menu "1" o-- "1..*" BlockInstr : cases
+}
+
+package "graphic_novel.dlg_parser.parser_dialog" as parser {
+  class ParseExcept {
+    + label : str
+    + what : str
+  }
+}
+
+package "graphic_novel" as gn {
+  class GraphicNovel {
+    + DEBUG : bool
+    - _skip_dlg : bool
+    - _not_skippable : bool
+    - _skip_time : float
+    + manager : UIManager
+    + dialog : ast.RootDialog
+    + ptr_blocks : iterator
+    + history_labels : List[str]
+    - __jump_next : Dict[str, str]
+    + text_area : UITypingTextArea
+    + title_area : UILabel
+    + input_text : UIInputText
+    + v_box : UIBoxLayout
+    + box_dlg : UIBoxLayout
+    + hide_gui : bool
+    + background_texture : arcade.Texture
+    + left_side_screen : List[CharacterVN]
+    + right_side_screen : List[CharacterVN]
+    - __dict_char : Dict[str, CharacterVN]
+    - __events : Dict[str, Callable]
+    + input_text_check : dict
+    - __dialog_end : bool
+    - __filter_video : list
+    + variables : Dict[str, Any]
+    - __strategy_action : Dict[str, actions.Action]
+    + input_handler : InputHandler
+
+    + add_event(name_event:str, event:Callable) : None
+    + add_filter_video(filter_video) : None
+    + setup(path_dialog:str) : None
+    + setup_dialog(path_dialog:str) : None
+    + on_draw() : None
+    + draw() : None
+    + update(dt:float) : None
+    + on_key_press(symbol:int, modifiers:int) : None
+    + jmp_next_dialog(label:str) : None
+    + ended : bool
+    + characters : Dict[str, CharacterVN]
+    + event_table : Dict[str, Callable]
+    + video_filters : list
+    + set_color_text(color) : None
+  }
+
+  class UITypingTextArea {
+    - __text_to_write : str
+    - __delay_typing : float
+    - __last_delay_typing : float
+    + instant_write : bool
+    + counter_char : int
+    + delay_typing : float
+    + set_text(text:str) : None
+    + on_update(dt:float) : None
+  }
+
+  class CharacterVN {
+    + name : str
+    - __state : str
+    - __sprites : Dict[str, arcade.Sprite]
+    + height : int
+    + width : int
+    + state : str
+    + sprites : Dict[str, arcade.Sprite]
+    + draw() : None
+    + top : float
+    + bottom : float
+    + left : float
+    + right : float
+  }
+}
+
+package "graphic_novel.actions" as act {
+  abstract class Action {
+    + machine : gn.GraphicNovel
+    + __call__(char:gn.CharacterVN, arg:str) : int
+  }
+  class MoveAction
+  class JmpAction
+  class SetAlphaAction
+  class EventAction
+  class ShakeAction
+  class RestartAction
+  class SetBackground
+  class ChangeCharSprite
+
+  Action <|-- MoveAction
+  Action <|-- JmpAction
+  Action <|-- SetAlphaAction
+  Action <|-- EventAction
+  Action <|-- ShakeAction
+  Action <|-- RestartAction
+  Action <|-- SetBackground
+  Action <|-- ChangeCharSprite
+}
+
+package "graphic_novel.input_handler" as ih {
+  class InputHandler {
+    + command_layout : Dict[int, lc.layout_command]
+    + change_key(name_action:str, new_key:int)
+  }
+}
+
+package "graphic_novel.layout_commands" as lc {
+  abstract class layout_command {
+    + name : str
+  }
+  class next_dlg_command
+  class skip_dlg_command
+  class hide_gui_command
+
+  layout_command <|-- next_dlg_command
+  layout_command <|-- skip_dlg_command
+  layout_command <|-- hide_gui_command
+}
+
+' External classes from Arcade, shown for inheritance/composition clarity
+package "arcade (external)" as arcade {
+  class View
+  class Texture
+  class Sprite
+}
+
+package "arcade.gui (external)" as ag {
+  class UIManager
+  class UIBoxLayout
+  class UIAnchorWidget
+  class UILabel
+  class UITextArea
+  class UIInputText
+  class UIBorder
+}
+
+' Inheritance to external classes
+gn.UITypingTextArea --|> ag.UITextArea
+gn.GraphicNovel --|> arcade.View
+
+' Key compositions/associations
+gn.GraphicNovel o-- ih.InputHandler : input_handler
+gn.GraphicNovel o-- gn.UITypingTextArea : text_area
+gn.GraphicNovel o-- ag.UILabel : title_area
+gn.GraphicNovel o-- ag.UIInputText : input_text
+gn.GraphicNovel o-- ag.UIBoxLayout : v_box, box_dlg
+gn.GraphicNovel o-- ag.UIManager : manager
+gn.GraphicNovel o-- arcade.Texture : background_texture
+gn.GraphicNovel o-- "0..*" gn.CharacterVN : left/right lists
+gn.GraphicNovel o-- ast.RootDialog : dialog
+
+' Dependencies and usage
+gn.GraphicNovel ..> ast.Node : parses/iterates
+gn.GraphicNovel ..> ag.UIAnchorWidget : uses
+gn.GraphicNovel ..> ag.UIBorder : uses
+act.Action --> gn.GraphicNovel : machine
+act.Action ..> gn.CharacterVN : operates on
+act.SetAlphaAction ..> arcade.Sprite : modifies
+gn.CharacterVN ..> arcade.Sprite : wraps
+ih.InputHandler ..> lc.layout_command : commands
+lc.next_dlg_command ..> gn.GraphicNovel : uses
+lc.skip_dlg_command ..> gn.GraphicNovel : uses
+lc.hide_gui_command ..> gn.GraphicNovel : uses
+@enduml

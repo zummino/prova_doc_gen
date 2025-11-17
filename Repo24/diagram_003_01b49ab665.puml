@@ -1,0 +1,123 @@
+@startuml 
+
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "backend_audio" {
+  class ffmetadata_generator <<module>> {
+    {static} +generate_ffmetadata(input_audio_paths, chapter_titles=None, author=None, title=None): str
+    {static} -__get_ffmetadata1(**kwargs): str
+    {static} -__get_track_times(input_audio_paths): list
+  }
+
+  class m4b <<module>> {
+    {static} +get_back_end_tts(): str
+    {static} +init(backend): None
+    {static} +generate_audio(text_in, out_mp3_path, lang="it", backend="PYTTS"): bool
+    {static} +generate_audio_gtts(text_in, out_mp3_path, lang="it"): bool
+    {static} +generate_audio_pytts(text_in, out_mp3_path, lang="it"): bool
+    {static} +generate_m4b(output_path, chapter_paths, ffmetadata, pause_duration=0): None
+    {static} +add_cover_to_audiobook(audio_path, cover_path, output_path): None
+    {static} +close_edge_tts(): None
+    {static} +get_voices_edge_tts(lang="it")
+    {static} +generate_audio_edge_tts(text_in, out_mp3_path, lang="it", voice)
+    {static} -__split_text_into_chunks(string, max_chars)
+    {static} -__save_tts_audio_gtts(text_to_speech_str, mp3_path, lang): bool
+    {static} -__sub_audio(audio_generator, output_path_mp3, chunks_sub_text, lang)
+  }
+}
+
+package "frontend" {
+  class input_tool <<module>> {
+    +SUPPORTED_LANGUAGE
+    {static} +get_sys_input(main_path, format_output="m4b")
+    {static} +get_path(path)
+  }
+}
+
+package "tools" {
+  class docx2audio <<module>> {
+    {static} +main()
+    {static} -__get_parent_element(parent)
+    {static} +iter_block_items(parent)
+    {static} +extract_chapters(doc, style_start_chapter_name)
+    {static} +get_text_from_paragraph(block, language, idx_list)
+    {static} +get_text_from_table(block, language)
+    {static} +get_text_from_chapter(chapter_doc, language="it")
+  }
+
+  class ebook2audio <<module>> {
+    {static} +main()
+    {static} +extract_by_epub(epub_path, directory_to_extract_path): None
+    {static} +get_guide_epub(root_tree)
+    {static} +prepocess_text(text_in): str
+    {static} +get_text_from_chapter(root_tree, idref_ch, content_dir_path, guide_manifest)
+    {static} +get_metadata(root_tree)
+    {static} +extract_chapter_and_generate_mp3(tree, output_file_path, mp3_temp_dir, content_file_dir_path, guide, language)
+  }
+
+  class pdf2audio <<module>> {
+    {static} +main()
+    {static} +read_cff(cff_data)
+    {static} -__filter_family_name(family_name): str
+    {static} -__add_family_name(fonts): dict
+    {static} +get_fonts(pdf_doc)
+    {static} +filter_reference(text_with_ref): str
+    {static} +get_chapter_text(pdf_doc, pattern_header, pattern_footer): list
+    {static} +cluster_text(raw_text, fonts)
+    {static} +get_metadata(pdf_doc)
+    {static} +get_chapters(text_clustered): list
+  }
+
+  class pptx2audio <<module>> {
+    {static} +main()
+    {static} +save_image_from_pptx(image, folder_path): None
+    {static} -__get_notes(note): str
+    {static} -__extract_text_from_slide(slide_obj, language="it"): str
+    {static} +extract_pptx_text(path_pptx, language="it"): str
+  }
+
+  class txt2audio <<module>> {
+    {static} +main()
+  }
+}
+
+' External dependencies used by modules
+class "tinytag.TinyTag" as TinyTag <<external>>
+class "edge_tts" as edge_tts <<external>>
+class "gtts" as gtts <<external>>
+class "pyttsx3" as pyttsx3 <<external>>
+class "ffmpeg-python" as ffmpeg <<external>>
+class "lxml.etree" as lxml_etree <<external>>
+class "python-docx" as docx <<external>>
+class "PyMuPDF(fitz)" as fitz <<external>>
+class "python-pptx" as pptx <<external>>
+
+' Module-to-module dependencies
+docx2audio ..> m4b
+docx2audio ..> ffmetadata_generator
+docx2audio ..> input_tool
+ebook2audio ..> m4b
+ebook2audio ..> ffmetadata_generator
+ebook2audio ..> input_tool
+pdf2audio ..> m4b
+pdf2audio ..> ffmetadata_generator
+pdf2audio ..> input_tool
+pptx2audio ..> m4b
+pptx2audio ..> input_tool
+txt2audio ..> m4b
+txt2audio ..> input_tool
+
+' Module-to-external dependencies
+ffmetadata_generator ..> TinyTag
+m4b ..> edge_tts
+m4b ..> gtts
+m4b ..> pyttsx3
+m4b ..> ffmpeg
+docx2audio ..> docx
+ebook2audio ..> lxml_etree
+pdf2audio ..> fitz
+pptx2audio ..> pptx
+
+@enduml

@@ -1,0 +1,70 @@
+@startuml
+
+skinparam shadowing false
+skinparam defaultFontName Courier
+
+node "User workstation" as user {
+  node "Python 3.x runtime" as py {
+    package "frontend" {
+      artifact "input_tool.py" as input_tool
+    }
+    package "backend_audio" {
+      artifact "m4b.py" as m4b
+      artifact "ffmetadata_generator.py" as ffmeta
+      artifact "pyttsx3 (local TTS)" as ptts
+    }
+    package "converters" {
+      artifact "docx2audio.py" as docx
+      artifact "ebook2audio.py" as ebook
+      artifact "pdf2audio.py" as pdf
+      artifact "pptx2audio.py" as pptx
+      artifact "txt2audio.py" as txt
+    }
+  }
+
+  node "FFmpeg executable" as ffmpeg_exe
+  node "File system" as fs
+}
+
+cloud "Google Text-to-Speech" as gtts_srv
+cloud "Microsoft Edge TTS" as edge_srv
+
+' CLI argument handling
+docx --> input_tool : parse args
+ebook --> input_tool : parse args
+pdf  --> input_tool : parse args
+pptx --> input_tool : parse args
+txt  --> input_tool : parse args
+
+' Converters use backend and metadata
+docx --> m4b
+docx --> ffmeta
+ebook --> m4b
+ebook --> ffmeta
+pdf  --> m4b
+pdf  --> ffmeta
+pptx --> m4b
+txt  --> m4b
+
+' Backend integrations
+m4b --> ffmpeg_exe : ffmpeg-python / subprocess
+m4b --> gtts_srv : gtts
+m4b --> edge_srv : edge-tts
+m4b --> ptts : pyttsx3
+
+' File I/O
+docx --> fs : read .docx / write temp .txt
+ebook --> fs : read .epub / temp extract
+pdf  --> fs : read .pdf / write temp
+pptx --> fs : read .pptx
+txt  --> fs : read .txt
+ffmeta --> fs : write ffmetadata file
+ffmpeg_exe --> fs : read .mp3 parts, write .m4b/.mp3
+
+note right of m4b
+Backend selection at runtime (get_back_end_tts):
+- win32/cygwin -> EDGE_TTS (edge-tts, network)
+- darwin       -> GTTS (gtts, network)
+- others       -> PYTTS (pyttsx3, local)
+end note
+@enduml

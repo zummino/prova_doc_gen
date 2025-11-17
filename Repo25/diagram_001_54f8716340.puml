@@ -1,0 +1,65 @@
+@startuml 
+
+left to right direction
+skinparam usecase {
+  BackgroundColor White
+  BorderColor Black
+}
+
+actor User as user
+actor "Console (stdin/stdout)" as console
+actor "POSIX OS" as os
+
+rectangle "Brainfuck Interpreter/JIT" as system {
+  usecase "Run built-in tests" as UC_Run
+  usecase "Lex and parse Brainfuck code" as UC_Parse
+  usecase "Report parsing error" as UC_ParseErr
+  usecase "Interpret Brainfuck code" as UC_Interp
+  usecase "Optimize tokens (-O1)" as UC_Opt
+  usecase "JIT compile tokens" as UC_JIT
+  usecase "JIT compile tokens (-O1)" as UC_JIT_O1
+  usecase "Execute compiled code" as UC_Exec
+  usecase "Execute compiled code (-O1)" as UC_Exec_O1
+  usecase "Report JIT code size (bytes, KB)" as UC_ReportSize
+  usecase "Read input (getchar)" as UC_ReadIn
+  usecase "Write output (putchar/printf)" as UC_WriteOut
+  usecase "Allocate executable memory (mmap)" as UC_mmap
+  usecase "Free compiled code (munmap)" as UC_munmap
+  usecase "Free token lists" as UC_freeTokens
+  usecase "Clear memory tape" as UC_clear
+}
+
+user -- UC_Run
+
+UC_Run ..> UC_Parse : <<include>>
+UC_Run ..> UC_Interp : <<include>>
+UC_Run ..> UC_ReportSize : <<include>>
+UC_Run ..> UC_JIT : <<include>>
+UC_Run ..> UC_Exec : <<include>>
+UC_Run ..> UC_Opt : <<include>>
+UC_Run ..> UC_JIT_O1 : <<include>>
+UC_Run ..> UC_Exec_O1 : <<include>>
+UC_Run ..> UC_munmap : <<include>>
+UC_Run ..> UC_freeTokens : <<include>>
+UC_Run ..> UC_clear : <<include>>
+
+UC_Parse ..> UC_ParseErr : <<extend>>
+
+UC_Interp ..> UC_ReadIn : <<include>>
+UC_Interp ..> UC_WriteOut : <<include>>
+
+UC_Exec ..> UC_ReadIn : <<include>>
+UC_Exec ..> UC_WriteOut : <<include>>
+
+UC_Exec_O1 ..> UC_ReadIn : <<include>>
+UC_Exec_O1 ..> UC_WriteOut : <<include>>
+
+UC_JIT ..> UC_mmap : <<include>>
+UC_JIT_O1 ..> UC_mmap : <<include>>
+
+console -- UC_ReadIn
+console -- UC_WriteOut
+
+os -- UC_mmap
+os -- UC_munmap
+@enduml

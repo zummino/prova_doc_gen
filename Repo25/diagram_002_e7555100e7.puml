@@ -1,0 +1,47 @@
+@startuml
+
+component "Main/Test Harness" as Main
+component "Lexer/Parser" as Lexer
+component "Interpreter" as Interpreter
+component "Optimizer -O1" as Optimizer
+component "JIT Compiler" as JIT
+component "Execution Memory\n(mmap/munmap)" as ExecMem
+component "IR Model & Stats" as IR
+component "Token Freeing" as TokenFree
+component "BF Tape (1024 bytes)" as Tape <<data>>
+component "libc\n(printf, putchar, getchar)" as Libc
+component "C++ Runtime\n(new/delete)" as CppRT
+component "JIT Code (runtime)" as JITCode <<artifact>>
+
+Main --> Lexer : parse code
+Lexer ..> IR : create tokens + stats
+
+Main --> Interpreter : run
+Interpreter ..> IR : traverse tokens
+Interpreter --> Tape : read/write cells
+Interpreter --> Libc : putchar/getchar
+
+Main --> Optimizer : optimize tokens
+Optimizer ..> IR : read/write tokens+stats
+
+Main --> JIT : compile/compileO1
+JIT ..> IR : read tokens+stats
+JIT --> ExecMem : mmap executable buffer
+JIT --> JITCode : emit function
+
+Main --> JITCode : execute
+JITCode --> Tape : read/write cells
+JITCode --> Libc : putchar/getchar
+
+Main --> TokenFree : free token lists
+TokenFree ..> IR : delete nodes
+
+Lexer --> CppRT : new
+Optimizer --> CppRT : new
+TokenFree --> CppRT : delete
+
+Main --> ExecMem : munmap via freeBFcompiled
+Main --> Tape : clear_memory
+Main --> Libc : printf
+
+@enduml

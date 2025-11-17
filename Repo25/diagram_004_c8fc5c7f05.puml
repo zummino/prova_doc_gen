@@ -1,0 +1,32 @@
+@startuml 
+
+
+node "Linux Host\nx86_64 Linux" as host {
+  node "User-space Process\nbrainfuck-jit" as process {
+    artifact "brainfuck-jit (ELF64)\n(main.cpp, brainfuck.cpp, brainfuck.h)" as exe
+    artifact "JIT code region\nmmap RWX buffer" as jit
+    artifact "Heap/Stack" as mem
+  }
+
+  node "libc.so.6\n(C runtime)" as libc
+  node "libstdc++.so.6\n(C++ runtime)" as libcpp
+  node "Linux Kernel" as kernel
+}
+
+node "Console/Terminal" as tty
+
+' Linking and runtime dependencies
+exe --> libc : calls\n(getchar, putchar,\nmmap, munmap)
+exe --> libcpp : C++ runtime\n(new/delete, RTTI)
+
+' Syscall bridging
+libc --> kernel : syscalls\n(mmap, munmap, stdio)
+
+' JIT emission and execution
+exe ..> jit : writes machine code\n(compile/compileO1)
+process --> jit : executes emitted\nx86_64 instructions
+
+' Standard I/O to console via libc
+exe --> tty : stdin/stdout\n(getchar/putchar)
+
+@enduml

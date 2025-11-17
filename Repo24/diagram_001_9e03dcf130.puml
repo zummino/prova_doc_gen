@@ -1,0 +1,70 @@
+@startuml
+
+left to right direction
+
+actor "CLI User" as User
+
+rectangle "System: AudioBook Converter CLI" as System {
+  usecase "Convert DOCX to M4B\n(docx2audio.py)" as UC_DOCX
+  usecase "Convert EPUB to M4B\n(ebook2audio.py)" as UC_EPUB
+  usecase "Convert PDF to Audiobook\n(pdf2audio.py)" as UC_PDF
+  usecase "Convert PPTX to audio (single track)\n(pptx2audio.py)" as UC_PPTX
+  usecase "Convert TXT to MP3\n(txt2audio.py)" as UC_TXT
+  usecase "Attach cover to audiobook\n(m4b.add_cover_to_audiobook)" as UC_COVER
+
+  usecase "Generate per-chapter audio\n(m4b.generate_audio / pyttsx3, gTTS, edge_tts)" as UC_GEN_AUDIO
+  usecase "Generate FFmetadata\n(ffmetadata_generator.generate_ffmetadata)" as UC_META
+  usecase "Assemble audiobook (concat, chapters)\n(m4b.generate_m4b -> ffmpeg)" as UC_M4B
+
+  usecase "Extract DOCX structure\n(python-docx)" as UC_DOCX_PARSE
+  usecase "Extract EPUB content\n(zipfile + lxml)" as UC_EPUB_PARSE
+  usecase "Extract PDF text\n(fitz / PyMuPDF)" as UC_PDF_PARSE
+  usecase "Extract PPTX text\n(python-pptx)" as UC_PPTX_PARSE
+}
+
+User --> UC_DOCX
+User --> UC_EPUB
+User --> UC_PDF
+User --> UC_PPTX
+User --> UC_TXT
+User --> UC_COVER
+
+UC_DOCX --> UC_DOCX_PARSE
+UC_DOCX --> UC_GEN_AUDIO
+UC_DOCX --> UC_META
+UC_DOCX --> UC_M4B
+
+UC_EPUB --> UC_EPUB_PARSE
+UC_EPUB --> UC_GEN_AUDIO
+UC_EPUB --> UC_META
+UC_EPUB --> UC_M4B
+
+UC_PDF --> UC_PDF_PARSE
+UC_PDF --> UC_GEN_AUDIO
+UC_PDF --> UC_META
+UC_PDF --> UC_M4B
+
+UC_PPTX --> UC_PPTX_PARSE
+UC_PPTX --> UC_GEN_AUDIO
+
+UC_TXT --> UC_GEN_AUDIO
+
+actor "Google TTS service\n(gTTS)" as GTTS
+actor "Microsoft Edge TTS service\n(edge_tts)" as EDGE
+actor "Local TTS engine\n(pyttsx3)" as PYTTS
+actor "FFmpeg CLI" as FFMPEG
+actor "TinyTag (audio duration)" as TINY
+
+GTTS ..> UC_GEN_AUDIO : used when backend == "GTTS"
+EDGE ..> UC_GEN_AUDIO : used when backend == "EDGE_TTS"
+PYTTS ..> UC_GEN_AUDIO : used when backend == "PYTTS"
+
+FFMPEG ..> UC_M4B : mux/concat, chapters
+FFMPEG ..> UC_GEN_AUDIO : chunk concat (gTTS long text)
+TINY ..> UC_META : chapter timing from MP3 durations
+
+note right of UC_PDF
+Current implementation contains inconsistencies
+in file naming and M4B assembly parameters.
+end note
+@enduml

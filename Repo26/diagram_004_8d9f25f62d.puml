@@ -1,0 +1,55 @@
+@startuml 
+
+node "End-User Machine" as host {
+  node "Python 3.x Runtime (>=3.6,<4)" as python {
+    component "arcade library\n(arcade, arcade.gui,\narcade.experimental)" as arcadeLib
+
+    node "Arcade App Process" as proc {
+      component "Arcade Window\narcade.Window + event loop\narcade.run()" as window
+      component "examples.simple_example\nand examples.demo1" as examples
+      component "graphic_novel.GraphicNovel\n(arcade.View)" as gn
+
+      package "graphic_novel package" as pkg {
+        component "dlg_parser.parser_dialog" as parser
+        component "dlg_parser.ast_dialog" as ast
+        component "actions.py" as actions
+        component "input_handler.py" as inputh
+        component "layout_commands.py" as layout
+        component "character_vn.py" as charvn
+        component "constants.py" as consts
+      }
+    }
+  }
+
+  node "File System" as fs {
+    artifact "examples/resource/dialog.json" as dialogJson
+    artifact "examples/resource/demo.json" as demoJson
+    folder "Arcade resources\n(:resources:...)" as arcadeRes
+  }
+
+  node "Display & Keyboard" as io
+}
+
+examples --> gn : imports, instantiates\nadd_event(), setup()
+examples --> window : creates Window\ncalls arcade.run()
+gn --> window : View shown via\nwindow.show_view()
+
+gn --> parser : parsing()
+parser --> fs : read JSON
+parser --> ast : build AST objects
+
+gn --> actions
+actions --> arcadeLib : load_texture(), Sprite
+
+gn --> inputh
+inputh --> layout
+
+gn --> charvn
+gn --> consts
+
+examples --> arcadeLib : arcade.resources\nadd_resource_handle()
+arcadeLib --> fs : resolve paths,\nload textures
+
+window --> io : render, key events
+io --> window : on_key_press()
+@enduml

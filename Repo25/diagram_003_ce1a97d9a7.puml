@@ -1,0 +1,51 @@
+@startuml
+
+' Stereotyped C++ structs as classes
+class linked_list_token <<struct>> {
+  +char op
+  +linked_list_token* next
+  +linked_list_token()
+  +virtual ~linked_list_token()
+}
+
+class ld_token_jmp <<struct>> {
+  +linked_list_token* jmp
+  +ld_token_jmp()
+  +virtual ~ld_token_jmp()
+}
+
+class linked_list_token_repeat <<struct>> {
+  +unsigned char repeat
+  +linked_list_token_repeat()
+  +virtual ~linked_list_token_repeat()
+}
+
+class statistic_token <<struct>> {
+  +unsigned short op_inc_dec
+  +unsigned short op_open_loop
+  +unsigned short op_close_loop
+  +unsigned short op_putchar
+  +unsigned short op_getchar
+  +statistic_token()
+}
+
+class BrainFuckCompiled <<typedef>> {
+  +int (*)(char*)
+}
+
+' Inheritance
+ld_token_jmp --|> linked_list_token
+linked_list_token_repeat --|> linked_list_token
+
+' Associations
+linked_list_token --> "0..1" linked_list_token : next
+ld_token_jmp --> "0..1" linked_list_token : jmp
+
+' Notes for constants/macros defined in the code
+note "MAX_DIM_BUFFER = 1024" as N1
+N1 .. linked_list_token
+
+note "getByteBFCompile(statistic)\ngetByteBFCompiledO1(statistic)" as N2
+N2 .. statistic_token
+
+@enduml
