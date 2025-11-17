@@ -1,0 +1,65 @@
+@startuml 
+
+left to right direction
+skinparam actorStyle stick
+skinparam usecase {
+  BackgroundColor White
+  BorderColor Black
+}
+skinparam rectangle {
+  BackgroundColor White
+  BorderColor Black
+}
+
+actor "Streamlit User" as User
+actor "Dataset Runner\n(datasets/*/main.py)" as Runner
+actor "Neo4j Database" as Neo4j
+actor "File System" as FS
+
+rectangle "Config Generator\n(config_gen/config_gen.py)" as CG {
+  usecase "Upload CSV files\n(st.file_uploader)" as UC1
+  usecase "Preview CSVs\n(st.dataframe)" as UC2
+  usecase "Select attributes and types\n(events/entities)" as UC3
+  usecase "Add manual entity files" as UC4
+  usecase "Define reference attributes\n(event_id, event_activity,\nevent_timestamp, entity_id)" as UC5
+  usecase "Generate and download config.yaml\n(yaml.dump, st.download_button)" as UC6
+}
+
+rectangle "Aggregation Pipeline (ocean_lib)\n(aggregation_pipeline.py, init_ekg.py,\naggregate_ekg.py, queries)" as OL {
+  usecase "Load configurations\n(log_config.yaml, ekg_config.yaml)" as UA1
+  usecase "Initialize EKG\n(load CSVs, create indexes,\ninfer CORR/DF rels)" as UA2
+  usecase "Build AggrSpecification\n(datasets/*/build_aggr_spec)" as UA3
+  usecase "Aggregate nodes into Classes\n(OBS edges, attribute aggregations,\nfinalize)" as UA4
+  usecase "Infer class-level relationships\n(DF_C, CORR_C)" as UA5
+  usecase "Collect metrics and verification\n(write benchmark_*.csv,\nverification_*.csv)" as UA6
+}
+
+' User interactions with the Streamlit app
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+
+' Runner interactions with the aggregation library
+Runner --> UA1
+Runner --> UA3
+Runner --> UA2
+Runner --> UA4
+Runner --> UA5
+Runner --> UA6
+
+' External systems interactions
+UC1 --> FS
+UC6 --> FS
+
+UA1 --> FS
+UA2 --> FS
+UA6 --> FS
+
+UA2 --> Neo4j
+UA4 --> Neo4j
+UA5 --> Neo4j
+
+@enduml

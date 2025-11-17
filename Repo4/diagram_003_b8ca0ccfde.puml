@@ -1,0 +1,126 @@
+@startuml
+
+package ocean_lib.aggregation {
+  class AggregateEkg {
+    - log: LogReferences
+    - ekg: EKGReferences
+    - neo4j: Neo4jConfig
+    - driver
+    - session
+    - benchmark: dict
+    - verification: dict
+    + __init__(): void
+    + one_step_agg(step: AggrStep): void
+    + finalize(): void
+    + aggregate_attributes(aggr_type: str, attribute: str, agg_func: AggregationFunction): void
+    + aggregate(aggr_spec: AggrSpecification): void
+    + infer_rels(): void
+    + verify_no_aggregated_nodes(): tuple
+  }
+
+  class InitEkg {
+    - neo4j: Neo4jConfig
+    - log: LogReferences
+    - ekg: EKGReferences
+    - driver
+    - session
+    + __init__(): void
+    + load_all(): void
+    + create_indexes(): void
+    + create_rels(): void
+  }
+
+  class AttrAggr <<dataclass>> {
+    + name: str
+    + function: AggregationFunction
+  }
+
+  class AggrStep <<dataclass>> {
+    + aggr_type: str
+    + ent_type: str?
+    + group_by: List[str]
+    + where: str?
+    + attr_aggrs: List[AttrAggr]
+  }
+
+  class AggrSpecification <<dataclass>> {
+    + steps: List[AggrStep]
+  }
+
+  enum AggregationFunction {
+    SUM
+    AVG
+    MIN
+    MAX
+    MINMAX
+    MULTISET
+  }
+}
+
+package ocean_lib.configurator {
+  class Knowledge {
+    + log
+    + ekg
+    + __init__(): void
+  }
+
+  class HandleConfig {
+    - log
+    - ekg
+    - session
+    + __init__(session)
+    + load_entities_in_log_config(): void
+  }
+
+  class NodeConfig <<dataclass>> {
+    + path: str
+    + attr: List[str]
+    + attr_types: Dict[str, str]
+    + type: str?
+  }
+
+  class LogReferences <<dataclass>> {
+    + event_id: str
+    + event_activity: str
+    + event_timestamp: str
+    + entity_id: str
+    + events: NodeConfig?
+    + entities: Dict[str, NodeConfig]?
+  }
+
+  class Neo4jConfig <<dataclass>> {
+    + URI: str
+    + username: str
+    + password: str
+  }
+
+  class EKGReferences <<dataclass>> {
+    + type_tag: str
+    + entity_type_mode: str?
+    + neo4j: Neo4jConfig
+  }
+}
+
+' Relationships (derived from code)
+AggregateEkg ..> LogReferences : uses
+AggregateEkg ..> EKGReferences : uses
+AggregateEkg ..> Neo4jConfig : uses
+AggregateEkg --> AggrStep : one_step_agg(step)
+AggregateEkg --> AggrSpecification : aggregate(spec)
+AggregateEkg ..> AggregationFunction : aggregate_attributes()
+
+InitEkg ..> LogReferences : uses
+InitEkg ..> EKGReferences : uses
+InitEkg ..> Neo4jConfig : uses
+
+HandleConfig ..> Knowledge : reads/writes
+Knowledge ..> LogReferences : holds
+Knowledge ..> EKGReferences : holds
+
+AggrStep *-- "0..*" AttrAggr : attr_aggrs
+AggrSpecification *-- "1..*" AggrStep : steps
+LogReferences o--> "0..1" NodeConfig : events
+LogReferences o--> "0..*" NodeConfig : entities
+EKGReferences *-- Neo4jConfig : neo4j
+
+@enduml

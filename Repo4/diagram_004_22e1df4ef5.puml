@@ -1,0 +1,64 @@
+@startuml
+
+node "User Browser" as Browser
+
+node "Config Generator Host" as CGH {
+  component "Streamlit App\n(config_gen/config_gen.py)" as Streamlit
+  folder "uploaded_csvs" as UploadedCSVs {
+    artifact "event/entity CSV copies"
+  }
+}
+
+node "Developer Workstation" as Dev {
+  node "Python Runtime" as Py {
+    component "Dataset Script\n(datasets/<dataset>/main.py)" as DatasetScript
+    component "ocean_lib\n(aggregation, configurator, query)" as OceanLib
+  }
+
+  folder "Dataset Dir\n(datasets/<dataset>)" as DatasetDir {
+    artifact "log_config.yaml"
+    artifact "ekg_config.yaml"
+    folder "validation" as ValidationFolder {
+      artifact "benchmark_*.csv"
+      artifact "verification_*.csv"
+    }
+  }
+}
+
+node "Neo4j Server" as NeoHost {
+  database "Neo4j DBMS\n(database='neo4j')" as Neo4j
+  folder "Neo4j Import Dir" as ImportDir {
+    artifact "Events CSV"
+    artifact "Entities CSV"
+  }
+}
+
+' Relationships (network and filesystem)
+Browser --> Streamlit : HTTP
+Streamlit --> UploadedCSVs : writes CSV copies
+DatasetScript --> OceanLib : imports
+DatasetScript --> DatasetDir : reads config\nwrites validation CSVs
+DatasetScript --> Neo4j : Bolt driver (neo4j python driver)
+Neo4j --> ImportDir : LOAD CSV file:///...
+
+' Notes and manual step
+note right of Streamlit
+Produces config.yaml for download
+and stores CSVs in uploaded_csvs
+end note
+
+note bottom of DatasetDir
+log_config.yaml and ekg_config.yaml are
+read by ocean_lib.configurator.config.load_configs()
+end note
+
+note left of ImportDir
+CSV files referenced in log_config.yaml
+must be accessible under this directory
+(or per Neo4j file URL settings)
+end note
+
+' Manual placement of config.yaml into dataset directory
+Browser ..> DatasetDir : user places downloaded\nconfig.yaml here
+
+@enduml

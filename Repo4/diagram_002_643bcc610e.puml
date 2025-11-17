@@ -1,0 +1,87 @@
+@startuml
+skinparam componentStyle rectangle
+
+package "datasets" {
+  [datasets.bpic17.main] as d_bpic17
+  [datasets.logistics.main] as d_logistics
+  [datasets.order-management.main] as d_order_mgmt
+  [datasets.p2p.main] as d_p2p
+  [datasets.soccer.main] as d_soccer
+}
+
+package "config_gen" {
+  [config_gen.app] as cfg_app
+}
+
+package "ocean_lib (public API)" {
+  [ocean_lib.__init__] as api
+}
+
+package "ocean_lib.aggregation" {
+  [aggregation_pipeline] as agg_pipeline
+  [aggregate_ekg] as agg_ekg
+  [init_ekg] as init_ekg
+  [grammar] as grammar
+  [collect_info_decorator] as collect_dec
+}
+
+package "ocean_lib.configurator" {
+  [config] as configurator
+  [knowledge] as knowledge
+  [handle_config] as handle_config
+}
+
+package "ocean_lib.query" {
+  [init_query] as q_init
+  [aggregation_query] as q_aggr
+}
+
+node "Neo4j Database" as neo4j
+folder "Filesystem" as fs
+database "YAML configs\n(log_config.yaml,\nekg_config.yaml)" as yaml_cfg
+
+' Datasets use API
+d_bpic17 --> api : import pipeline, grammar types
+d_logistics --> api
+d_order_mgmt --> api
+d_p2p --> api
+d_soccer --> api
+
+' API delegates to runtime components
+api --> agg_pipeline : exports pipeline(), run_pipeline(), types
+api --> grammar
+
+' Pipeline loads configs and orchestrates
+agg_pipeline --> configurator : load_configs(), get_*()
+agg_pipeline --> knowledge : set references
+agg_pipeline --> init_ekg : first_load init
+agg_pipeline --> agg_ekg : run aggregation
+agg_pipeline --> fs : write benchmarks
+
+' InitEkg and AggregateEkg use queries and Neo4j
+init_ekg --> q_init
+init_ekg --> neo4j : GraphDatabase.driver
+agg_ekg --> q_aggr
+agg_ekg --> handle_config : when entity_type_mode='label'
+agg_ekg --> neo4j : run cypher
+
+' Queries refer to knowledge for LOG/EKG
+q_init --> knowledge
+q_aggr --> knowledge
+
+' Config reads YAML config files
+configurator --> yaml_cfg : load_configs()
+
+' Config generator produces log config YAML
+cfg_app --> fs : write uploaded CSVs
+cfg_app --> yaml_cfg : emit YAML (download)
+
+' Neo4j data depends on CSV paths in log_config
+q_init --> fs : LOAD CSV
+
+note right of agg_pipeline
+pipeline(first_load=...) decorator
+executes run_pipeline when
+dataset module is __main__
+end note
+@enduml
