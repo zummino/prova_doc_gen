@@ -1,0 +1,67 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "User (Browser)" as User
+
+package "Django Project: eGov_RA" as Django {
+  component "eGov_RA.settings" as Settings
+  component "eGov_RA.urls" as Urls
+  component "WSGI/ASGI" as Gateway
+
+  package "App: parsingbpmn" as App {
+    component "parsingbpmn.views" as Views
+    component "parsingbpmn.models" as Models
+    component "parsingbpmn.forms" as Forms
+    component "utils.fusion_functions" as Fusion
+    component "utils.template_filters" as TFilters
+    component "templates/*.html" as Templates
+  }
+}
+
+package "BPMN Python Library (vendored)" as BPMN {
+  component "bpmn_diagram_rep" as BRep
+  component "bpmn_diagram_import" as BImp
+  component "bpmn_diagram_export" as BExp
+}
+
+database "MySQL (prova2)" as MySQL
+component "PyMySQL driver" as PyMySQL
+folder "Local filesystem (MEDIA_ROOT)" as MediaFS
+
+component "openpyxl (Excel I/O)" as OpenPyXL
+
+component "bpmn-js (client-side viewer)" as BPMNJS
+
+
+' Client interactions
+User --> Urls : HTTP requests
+Gateway ..> Urls
+Settings ..> Gateway
+
+' Intra-Django usage
+Urls --> Views : URL dispatch
+Views --> Forms
+Views --> Models : ORM queries
+Views --> Templates : render()
+Templates ..> TFilters : template library (settings.TEMPLATES.libraries)
+
+' Business logic and external libraries
+Views --> Fusion : contextualization/profile logic
+Views --> BRep : BPMN load/export facade
+BRep ..> BImp : XML import
+BRep ..> BExp : XML export
+Views --> OpenPyXL : generate/read XLSX reports
+Views --> MediaFS : upload/read BPMN files (FileField)
+
+' Persistence
+Models --> MySQL : CRUD via Django ORM
+Models ..> PyMySQL : DB driver (pymysql.install_as_MySQLdb())
+
+' Client-side BPMN viewing
+User ..> BPMNJS : load/visualize BPMN XML
+BPMNJS --> MediaFS : GET BPMN XML served by Django
+
+@enduml

@@ -1,0 +1,259 @@
+@startuml
+
+/' Styling '/
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+hide circle
+
+package "parsingbpmn.models" as models {
+
+  class System <<DjangoModel>> {
+    +name: CharField(100)
+    +__str__()
+    +delete(...)
+  }
+
+  class Process <<DjangoModel>> {
+    +name: CharField(100)
+    +xml: FileField(upload_to="processes/xml/", validators=[FileExtensionValidator(xml,bpmn)])
+    +__str__()
+    +delete(...)
+  }
+
+  class Asset_type <<DjangoModel>> {
+    +name: CharField(100)
+    +description: CharField(500)
+    +__str__()
+  }
+
+  class Asset <<DjangoModel>> {
+    +name: CharField(100)
+    +bpmn_id: CharField(100) [null=True]
+    +position: CharField(100) [null=True]
+    +__str__()
+  }
+
+  class Attribute_value <<DjangoModel>> {
+    +value: CharField(100)
+    +__str__()
+  }
+
+  class Threat <<DjangoModel>> {
+    +name: CharField(100)
+    +description: CharField(500)
+    +__str__()
+  }
+
+  class Attribute <<DjangoModel>> {
+    +attribute_name: CharField(100)
+    +__str__()
+  }
+
+  class control_framework <<DjangoModel>> {
+    +name: CharField(100)
+    +version: CharField(500)
+    +__str__()
+  }
+
+  class Family <<DjangoModel>> {
+    +name: CharField(100)
+    +description: CharField(500)
+    +__str__()
+  }
+
+  class Control <<DjangoModel>> {
+    +name: CharField(100)
+    +description: CharField(500)
+    +maturity_level: CharField(100) = "minimo"
+    +__str__()
+  }
+
+  class Asset_has_attribute <<DjangoModel>> {
+    {field} +asset: FK(Asset)
+    {field} +attribute: FK(Attribute)
+  }
+
+  class Threat_has_attribute <<DjangoModel>> {
+    {field} +threat: FK(Threat)
+    {field} +attribute: FK(Attribute)
+  }
+
+  class Threat_has_control <<DjangoModel>> {
+    {field} +threat: FK(Threat)
+    {field} +control: FK(Control)
+  }
+
+  class Threat_has_family <<DjangoModel>> {
+    {field} +threat: FK(Threat)
+    {field} +family: FK(Family)
+  }
+
+  enum FunctionStatus {
+    ID
+    PR
+    DE
+    RS
+    RC
+  }
+
+  class Category <<DjangoModel>> {
+    +name: CharField(100)
+    +description: CharField(500)
+    +function: CharField(choices=FunctionStatus)
+    +source: CharField(500) = "Cybersecurity framework nazionale"
+    +__str__()
+  }
+
+  class Subcategory <<DjangoModel>> {
+    +name: CharField(100)
+    +description: CharField(500)
+    +__str__()
+  }
+
+  class Context <<DjangoModel>> {
+    +name: CharField(100)
+    +__str__()
+  }
+
+  class Contextualization <<DjangoModel>> {
+    +priority: CharField(100)
+  }
+
+  class Profile <<DjangoModel>> {
+    +name: CharField(100)
+    +level: CharField(100) [null=True, blank=True]
+    +__str__()
+  }
+
+  class Maturity_level <<DjangoModel>> {
+    +name: CharField(100)
+    +description: CharField(100)
+    +level: CharField(100)
+    +__str__()
+  }
+
+  class contextualization_has_maturity_levels <<DjangoModel>> {
+    {field} +subcategory_contextualization: FK(Contextualization)
+    {field} +maturity_level: FK(Maturity_level)
+  }
+
+  class profile_has_subcategory <<DjangoModel>> {
+    +priority: CharField(100)
+    {field} +profile: FK(Profile)
+    {field} +subcategory: FK(Subcategory)
+    {field} +maturity_level: FK(Maturity_level) [null=True]
+  }
+
+  class profile_maturity_control <<DjangoModel>> {
+    +implementation: CharField(1000) [null=True]
+    {field} +profile: FK(Profile) [null=True]
+    {field} +subcategory: FK(Subcategory)
+    {field} +control: FK(Control)
+  }
+
+  class is_a_requirement_for_mitigation <<DjangoModel>> {
+    {field} +threat: FK(Threat)
+    {field} +subcategory: FK(Subcategory)
+  }
+
+  class Subcategory_is_implemented_through_control <<DjangoModel>> {
+    {field} +subcategory: FK(Subcategory)
+    {field} +control: FK(Control)
+  }
+
+  class Threat_has_threatdetails <<DjangoModel>> {
+    {field} +threat: FK(Threat) [related_name="threat_father"]
+    {field} +threatdetails: FK(Threat) [related_name="threat_child"]
+  }
+
+  class Control_has_subcontrol <<DjangoModel>> {
+    {field} +control: FK(Control) [related_name="control_father"]
+    {field} +subcontrol: FK(Control) [related_name="control_child"]
+  }
+
+  class Control_has_relatedcontrol <<DjangoModel>> {
+    {field} +control: FK(Control) [related_name="control_relating"]
+    {field} +relatedcontrol: FK(Control) [related_name="control_related"]
+    {field} +family: FK(Family) [related_name="family_relating"]
+    {field} +relatedfamily: FK(Family) [related_name="family_related"]
+  }
+
+  class Fusioncontext_has_context <<DjangoModel>> {
+    {field} +fusion_context: FK(Context) [related_name="context_father"]
+    {field} +context: FK(Context) [related_name="context_child"]
+  }
+
+  /' ForeignKey relationships '/
+
+  System "1" o-- "many" Process : system
+  Process "1" o-- "many" Asset : process
+  Asset_type "1" o-- "many" Asset : asset_type [null]
+  Attribute_value "1" o-- "many" Attribute : attribute_value
+  Asset_type "1" o-- "many" Attribute : asset_type
+
+  control_framework "1" o-- "many" Family : framework_id
+  Family "1" o-- "many" Control : family [null]
+
+  Asset "1" o-- "many" Asset_has_attribute : asset
+  Attribute "1" o-- "many" Asset_has_attribute : attribute
+
+  Threat "1" o-- "many" Threat_has_attribute : threat
+  Attribute "1" o-- "many" Threat_has_attribute : attribute
+
+  Threat "1" o-- "many" Threat_has_control : threat
+  Control "1" o-- "many" Threat_has_control : control
+
+  Threat "1" o-- "many" Threat_has_family : threat
+  Family "1" o-- "many" Threat_has_family : family
+
+  Category "1" o-- "many" Subcategory : category
+
+  Context "1" o-- "many" Contextualization : context
+  Subcategory "1" o-- "many" Contextualization : subcategory
+
+  Context "1" o-- "many" Maturity_level : context
+
+  Contextualization "1" o-- "many" contextualization_has_maturity_levels : subcategory_contextualization
+  Maturity_level "1" o-- "many" contextualization_has_maturity_levels : maturity_level
+
+  Context "1" o-- "many" Profile : context
+  control_framework "1" o-- "many" Profile : framework [null]
+
+  Profile "1" o-- "many" profile_has_subcategory : profile
+  Subcategory "1" o-- "many" profile_has_subcategory : subcategory
+  Maturity_level "1" o-- "many" profile_has_subcategory : maturity_level [null]
+
+  Profile "1" o-- "many" profile_maturity_control : profile [null]
+  Subcategory "1" o-- "many" profile_maturity_control : subcategory
+  Control "1" o-- "many" profile_maturity_control : control
+
+  Threat "1" o-- "many" Threat_has_threatdetails : parent(child rel.) 
+  Threat "1" o-- "many" Threat_has_threatdetails : child
+
+  Control "1" o-- "many" Control_has_subcontrol : parent(child rel.)
+  Control "1" o-- "many" Control_has_subcontrol : child
+
+  Control "1" o-- "many" Control_has_relatedcontrol : control
+  Control "1" o-- "many" Control_has_relatedcontrol : relatedcontrol
+  Family  "1" o-- "many" Control_has_relatedcontrol : family
+  Family  "1" o-- "many" Control_has_relatedcontrol : relatedfamily
+
+  Subcategory "1" o-- "many" Subcategory_is_implemented_through_control : subcategory
+  Control "1" o-- "many" Subcategory_is_implemented_through_control : control
+
+  Threat "1" o-- "many" is_a_requirement_for_mitigation : threat
+  Subcategory "1" o-- "many" is_a_requirement_for_mitigation : subcategory
+
+  Context "1" o-- "many" Fusioncontext_has_context : fusion_context
+  Context "1" o-- "many" Fusioncontext_has_context : context
+
+  /' Attribute typing for consistency '/
+  Category -[hidden]down- FunctionStatus
+
+}
+
+@enduml

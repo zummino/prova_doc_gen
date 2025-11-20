@@ -1,0 +1,102 @@
+@startuml
+left to right direction
+
+actor "User" as User
+actor "Django Admin" as Admin
+
+package "System Management" {
+  usecase "system_management" as UC_system_management
+  usecase "delete_system" as UC_delete_system
+}
+
+package "Process Management" {
+  usecase "bpmn_process_management" as UC_bpmn_process_management
+  usecase "process_view_task_type" as UC_process_view_task_type
+  usecase "process_view_attribute" as UC_process_view_attribute
+  usecase "edit_process" as UC_edit_process
+  usecase "delete_process" as UC_delete_process
+  usecase "process_enrichment" as UC_process_enrichment
+  usecase "task_type_enrichment" as UC_task_type_enrichment
+  usecase "bpmn_viewer" as UC_bpmn_viewer
+}
+
+package "Threat Modeling" {
+  usecase "threats_and_controls" as UC_threats_and_controls
+  usecase "threat_modeling" as UC_threat_modeling
+  usecase "export_threat_modeling" as UC_export_threat_modeling
+}
+
+package "Context Management" {
+  usecase "context_management" as UC_context_management
+  usecase "create_context" as UC_create_context
+  usecase "save_contextualization" as UC_save_contextualization
+  usecase "down_context_sample" as UC_down_context_sample
+  usecase "read_context_file" as UC_read_context_file
+  usecase "delete_context" as UC_delete_context
+  usecase "export_context" as UC_export_context
+  usecase "fusion_perform" as UC_fusion_perform
+}
+
+package "Profile Management" {
+  usecase "profile_management" as UC_profile_management
+  usecase "create_profile" as UC_create_profile
+  usecase "save_profile" as UC_save_profile
+  usecase "profile_controls" as UC_profile_controls
+  usecase "save_profile_controls" as UC_save_profile_controls
+  usecase "generate_profile" as UC_generate_profile
+  usecase "delete_profile" as UC_delete_profile
+  usecase "profile_evaluation" as UC_profile_evaluation
+  usecase "profile_missing" as UC_profile_missing
+  usecase "controls_missing" as UC_controls_missing
+  usecase "profile_roadmap" as UC_profile_roadmap
+  usecase "implemented_controls" as UC_implemented_controls
+  usecase "fusion_profile_perform" as UC_fusion_profile_perform
+  usecase "export_profile" as UC_export_profile
+  usecase "export_roadmap" as UC_export_roadmap
+}
+
+usecase "admin" as UC_admin
+
+User --> UC_system_management
+User --> UC_delete_system
+
+User --> UC_bpmn_process_management
+User --> UC_process_view_task_type
+User --> UC_process_view_attribute
+User --> UC_edit_process
+User --> UC_delete_process
+User --> UC_process_enrichment
+User --> UC_task_type_enrichment
+User --> UC_bpmn_viewer
+
+User --> UC_threats_and_controls
+User --> UC_threat_modeling
+User --> UC_export_threat_modeling
+
+User --> UC_context_management
+User --> UC_create_context
+User --> UC_save_contextualization
+User --> UC_down_context_sample
+User --> UC_read_context_file
+User --> UC_delete_context
+User --> UC_export_context
+User --> UC_fusion_perform
+
+User --> UC_profile_management
+User --> UC_create_profile
+User --> UC_save_profile
+User --> UC_profile_controls
+User --> UC_save_profile_controls
+User --> UC_generate_profile
+User --> UC_delete_profile
+User --> UC_profile_evaluation
+User --> UC_profile_missing
+User --> UC_controls_missing
+User --> UC_profile_roadmap
+User --> UC_implemented_controls
+User --> UC_fusion_profile_perform
+User --> UC_export_profile
+User --> UC_export_roadmap
+
+Admin --> UC_admin
+@enduml

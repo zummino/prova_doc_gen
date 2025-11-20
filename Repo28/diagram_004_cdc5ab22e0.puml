@@ -1,0 +1,63 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam wrapWidth 240
+skinparam maxMessageSize 120
+
+' External client
+node "Web Browser" as Browser
+
+' Public CDNs explicitly referenced in templates
+node "Public CDNs\n- Bootstrap (stackpath, jsdelivr)\n- jQuery (ajax.googleapis.com, code.jquery.com)\n- bpmn-js (unpkg.com)" as CDNs
+
+' Application host
+node "Application Host" as AppHost {
+  node "Django Application: eGov_RA" as Django {
+    component "WSGI endpoint\n(eGov_RA.wsgi.application)" as WSGI
+    component "ASGI endpoint\n(eGov_RA.asgi.application)" as ASGI
+
+    artifact "Django project & app code\n- eGov_RA/*\n- parsingbpmn/*\n- utils/*\n- templates/*" as Code
+
+    artifact "Uploaded BPMN/XML files\nupload_to='processes/xml/'" as Media
+    artifact "Static files\nSTATIC_URL = /static/" as StaticDir
+  }
+
+  database "MySQL Server\nhost=localhost, port=3306\nDB = prova2" as MySQL
+}
+
+' Client <-> App interactions
+Browser --> Django : HTTP(S) requests\n(HTML views, BPMN file retrieval)
+Browser --> CDNs : Fetch JS/CSS (bpmn-js,\nBootstrap, jQuery)
+
+' App <-> DB and filesystem
+Django --> MySQL : MySQL (TCP 3306)\n(django.db.backends.mysql)\n(PyMySQL shim)
+Django --> Media : Read/Write uploaded files\n(Process.xml FileField)
+Django --> StaticDir : Serve static (development)
+
+' Notes to bind code artifacts
+note right of WSGI
+  File: eGov_RA/wsgi.py
+  get_wsgi_application()
+end note
+
+note right of ASGI
+  File: eGov_RA/asgi.py
+  get_asgi_application()
+end note
+
+note bottom of MySQL
+  settings.DATABASES['default']=
+  ENGINE: django.db.backends.mysql
+  NAME: prova2
+  USER: root
+  HOST: localhost
+  PORT: 3306
+end note
+
+note bottom of Media
+  Media managed by Django
+  (DEBUG serving via urls.static)
+end note
+
+@enduml
