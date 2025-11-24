@@ -1,4 +1,4 @@
-@startuml Section_8_1_Deployment
+@startuml
 
 skinparam componentStyle rectangle
 skinparam packageStyle rectangle

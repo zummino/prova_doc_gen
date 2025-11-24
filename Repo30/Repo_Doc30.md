@@ -1837,7 +1837,7 @@ Figure 8-1 shows the deployment topology for all variants, including local datas
 Figure 8-1 — Deployment topology for EF/IF, BasicNet/ResNet variants
 
 ```plantuml
-@startuml Section_8_1_Deployment
+@startuml
 
 skinparam componentStyle rectangle
 skinparam packageStyle rectangle
