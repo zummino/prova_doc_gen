@@ -1,0 +1,217 @@
+@startuml
+package "torch" {
+  abstract class "nn.Module" as TorchModule
+  abstract class "utils.data.Dataset" as TorchDataset
+  abstract class "utils.data.ConcatDataset" as TorchConcatDataset
+}
+
+package "Multimodal_IF_ResNet" {
+
+  package "Transforms" {
+    class ToTensor3D {
+    }
+
+    class RandomZFlip { 
+      +p: float
+    }
+
+    class NormalizeInRange { 
+      +supLim: float
+      +infLim: float
+      +type_n: str
+      +max_p: float
+      +min_p: float
+    }
+
+    class Resize3D { 
+      +size: tuple
+      +enable_zoom: bool
+    }
+
+    ToTensor3D -up-|> TorchModule
+    RandomZFlip -up-|> TorchModule
+    NormalizeInRange -up-|> TorchModule
+    Resize3D -up-|> TorchModule
+  }
+
+  package "MedicalNet" {
+    class BasicBlock { 
+      -conv1
+      -bn1
+      -relu
+      -conv2
+      -bn2
+      -downsample
+      -stride
+      -dilation
+    }
+
+    class Bottleneck { 
+      -conv1
+      -bn1
+      -conv2
+      -bn2
+      -conv3
+      -bn3
+      -relu
+      -downsample
+      -stride
+      -dilation
+    }
+
+    class ResNet { 
+      -inplanes: int
+      -no_cuda: bool
+      -conv1
+      -bn1
+      -relu
+      -maxpool
+      -layer1
+      -layer2
+      -layer3
+      -layer4
+      -conv_seg
+    }
+
+    BasicBlock -up-|> TorchModule
+    Bottleneck -up-|> TorchModule
+    ResNet -up-|> TorchModule
+
+    ResNet ..> BasicBlock
+    ResNet ..> Bottleneck
+  }
+
+  package "Models" {
+    class MyMedicalResNet {
+      -backBone: ResNet
+      -net_dict: dict
+      -end: nn.Sequential
+    }
+
+    class Down {
+      -step: nn.Sequential
+    }
+
+    class EmptyLayer {
+    }
+
+    class Identity {
+      -step: nn.Sequential
+      -join: nn.ReLU
+    }
+
+    class Dim_Red {
+      -step: nn.Sequential
+    }
+
+    class Branch { 
+      -step: nn.Sequential
+    }
+
+    class ReductionBlock { 
+      -step2_a: Dim_Red
+      -step2_b: Branch
+      -join: nn.ReLU
+    }
+
+    class MyNet_ResNet {
+      +printb: bool
+      -step1: Down
+      -maxPool: nn.MaxPool3d
+      -identity1_1: Identity
+      -identity1: Identity
+      -identity2: Identity
+      -identity3: Identity
+      -identity4: Identity
+      -identity5: Identity
+      -step2: ReductionBlock
+      -step3: ReductionBlock
+      -step4: ReductionBlock
+      -step5: ReductionBlock
+      -avg: nn.AdaptiveAvgPool3d
+      -end: nn.Sequential
+    }
+
+    class MyNet_Multimodal {
+      +model_type: str
+      +path_mri: str
+      +printb: bool
+      -mri_part
+      -pet_part
+      -fc_mri
+      -fc_pet
+      -fc_both: nn.Sequential
+    }
+
+    class MyNet_MultimodalMedicalNet {
+      +model_type: str
+      +path_mri: str
+      +printb: bool
+      -mri_part: MyMedicalResNet
+      -pet_part: MyMedicalResNet
+      -fc_mri
+      -fc_pet
+      -fc_both: nn.Sequential
+    }
+
+    MyMedicalResNet -up-|> TorchModule
+    Down -up-|> TorchModule
+    EmptyLayer -up-|> TorchModule
+    Identity -up-|> TorchModule
+    Dim_Red -up-|> TorchModule
+    Branch -up-|> TorchModule
+    ReductionBlock -up-|> TorchModule
+    MyNet_ResNet -up-|> TorchModule
+    MyNet_Multimodal -up-|> TorchModule
+    MyNet_MultimodalMedicalNet -up-|> TorchModule
+
+    MyMedicalResNet *-- ResNet : backBone
+    MyMedicalResNet *-- "nn.Sequential" : end
+
+    MyNet_ResNet *-- Down
+    MyNet_ResNet *-- Identity
+    MyNet_ResNet *-- ReductionBlock
+    MyNet_ResNet *-- "nn.AdaptiveAvgPool3d"
+    MyNet_ResNet *-- "nn.Sequential"
+
+    MyNet_Multimodal *-- MyNet_ResNet : mri_part/pet_part (model_type "resnet*")
+    MyNet_Multimodal *-- EmptyLayer : replace end
+    MyNet_Multimodal *-- "nn.Sequential" : fc_both
+
+    MyNet_MultimodalMedicalNet *-- MyMedicalResNet : mri_part
+    MyNet_MultimodalMedicalNet *-- MyMedicalResNet : pet_part
+    MyNet_MultimodalMedicalNet *-- EmptyLayer : replace end
+    MyNet_MultimodalMedicalNet *-- "nn.Sequential" : fc_both
+  }
+
+  package "Data" {
+    class My_DatasetFolder {
+      +root: str
+      +transform
+      +is_valid_file
+      +list_classes: list
+      +samples: list
+      +readVolume
+    }
+
+    class My_DatasetFolderMultiModal {
+      +root: str
+      +transform_mri
+      +transform_pet
+      +is_valid_file
+      +list_classes: list
+      +samples: list
+      +readerMRI
+      +readerPET
+    }
+
+    class BalanceConcatDataset {
+    }
+
+    My_DatasetFolder -up-|> TorchDataset
+    My_DatasetFolderMultiModal -up-|> TorchDataset
+    BalanceConcatDataset -up-|> TorchConcatDataset
+  }
+}
+
+@enduml

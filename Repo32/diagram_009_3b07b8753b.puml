@@ -1,0 +1,89 @@
+@startuml 
+
+skinparam componentStyle rectangle
+skinparam defaultTextAlignment center
+
+actor "Operator (CLI)" as user
+
+node "Compute Node (GPU-enabled host)" as compute {
+  node "CUDA GPU (selected by --gpu_ids)\nvia CUDA_VISIBLE_DEVICES" as gpu
+
+  component "Python Runtime\n(PyTorch, torchvision,\nCUDA/cuDNN enabled)" as torch
+
+  artifact "FitPBPK/Main.py" as fit_main
+  artifact "FitPBPK/Utils.py" as fit_utils
+
+  artifact "STEP1_2_PBPK/main.py" as s12_main
+  artifact "STEP1_2_PBPK/TrainFunction.py" as s12_train
+  artifact "STEP1_2_PBPK/Utils.py" as s12_utils
+
+  artifact "STEP1_2_3_PBPK/main.py" as s123_main
+  artifact "STEP1_2_3_PBPK/TrainFunction.py" as s123_train
+  artifact "STEP1_2_3_PBPK/Utils.py" as s123_utils
+
+  artifact "STEP1_2_3_4_PBPK/main.py" as s1234_main
+  artifact "STEP1_2_3_4_PBPK/TrainFunction.py" as s1234_train
+  artifact "STEP1_2_3_4_PBPK/Utils.py" as s1234_utils
+
+  user --> fit_main : launch\n--classe
+  user --> s12_main : launch\ntrain/validate/test
+  user --> s123_main : launch\ntrain/validate/test
+  user --> s1234_main : launch\ntrain/validate/test
+
+  fit_main --> torch
+  s12_main --> torch
+  s12_train --> torch
+  s12_utils --> torch
+  s123_main --> torch
+  s123_train --> torch
+  s123_utils --> torch
+  s1234_main --> torch
+  s1234_train --> torch
+  s1234_utils --> torch
+
+  torch --> gpu : CUDA kernels\n(cuDNN enabled)
+}
+
+node "Local Filesystem" as fs {
+  folder "basic_data/<classe>/" as basic_data
+  folder "IMG_FIT/<classe>/" as img_fit
+  folder "FINAL_DATASET/<classe>/" as final_dataset_fit
+
+  folder "PUBLIC_DATA/" as public_data {
+    folder "FINAL_DATASET/<classe>/" as final_dataset_public
+    file "df_benign.csv" as df_ben
+    file "df_malignant.csv" as df_mal
+    folder "Results/" as results_root
+  }
+
+  folder "PUBLIC_DATA/Results/..." as results_any
+}
+
+' Fit pipeline IO
+fit_main ..> basic_data : read .mat
+fit_main ..> final_dataset_fit : write .mat
+fit_main ..> img_fit : write plots (.png)
+
+' Training/validation/test pipelines IO (all STEP variants)
+s12_main ..> final_dataset_public : read .mat
+s123_main ..> final_dataset_public : read .mat
+s1234_main ..> final_dataset_public : read .mat
+
+s12_main ..> df_ben : read
+s12_main ..> df_mal : read
+s123_main ..> df_ben : read
+s123_main ..> df_mal : read
+s1234_main ..> df_ben : read
+s1234_main ..> df_mal : read
+
+' Pretrained weights load (local)
+s12_main ..> results_root : read pretrained\n.pth (CNN, DAE)
+s123_main ..> results_root : read pretrained\n.pth (CNN, DAE)
+s1234_main ..> results_root : read pretrained\n.pth (CNN, DAE)
+
+' Checkpoints, metrics, plots
+s12_main ..> results_any : write .pth/.mat/.csv/.png
+s123_main ..> results_any : write .pth/.mat/.csv/.png
+s1234_main ..> results_any : write .pth/.mat/.csv/.png
+
+@enduml

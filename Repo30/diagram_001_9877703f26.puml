@@ -1,0 +1,100 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "MAIN_TRAIN.py invoker" as User
+actor "Filesystem (MAT volumes, outputs)" as FS
+actor "CUDA GPU" as GPU
+actor "FoldForCV.xlsx" as XLSX
+actor "Pretrained Weights\n(MedicalNet, Unimodal)" as WEIGHTS
+
+package "Multimodal_EF_BasicNet" {
+  usecase "Configure run\n( seeds, device, fold, paths )" as EFB1
+  usecase "Assemble paired dataset\n(getFilesForSubset,\nMy_DatasetFolderMultiModal)" as EFB2
+  usecase "Define transforms\n(ToTensor3D, NormalizeInRange,\nRandomAffine, Resize3D)" as EFB3
+  usecase "Compute normalization stats\n(DefineRangeNormalization,\nnp_computeMinMax)" as EFB4
+  usecase "Train early-fusion model\n(MyNet_Simple, train_loop_validation)" as EFB5
+  usecase "Validate & test\n(ValidationStep, validateOnTest)" as EFB6
+  usecase "Predict & export\n(prediction_on_Test)" as EFB7
+  usecase "Persist artefacts\n(.pth, .mat, .txt, .png, .csv)" as EFB8
+}
+
+package "Multimodal_EF_ResNet" {
+  usecase "Configure run\n( seeds, device, fold, paths )" as EFR1
+  usecase "Assemble paired dataset\n(getFilesForSubset,\nMy_DatasetFolderMultiModal)" as EFR2
+  usecase "Define transforms\n(ToTensor3D, NormalizeInRange,\nRandomAffine, Resize3D)" as EFR3
+  usecase "Load MedicalNet pretrain\n(MyMedicalResNet/resnet.py)" as EFR4
+  usecase "Train early-fusion model\n(MyMedicalResNet, train_loop_validation)" as EFR5
+  usecase "Validate & test\n(ValidationStep, validateOnTest)" as EFR6
+  usecase "Predict & export\n(prediction_on_Test)" as EFR7
+  usecase "Persist artefacts\n(.pth, .mat, .txt, .png, .csv)" as EFR8
+}
+
+package "Multimodal_IF_BasicNet" {
+  usecase "Configure run\n( seeds, device, fold, paths )" as IFB1
+  usecase "Assemble datasets\n(only MRI, only PET, paired)\n(getFilesForSubset,\nMy_DatasetFolder,\nMy_DatasetFolderMultiModal)" as IFB2
+  usecase "Define transforms\n(ToTensor3D, NormalizeInRange,\nRandomAffine, Resize3D)" as IFB3
+  usecase "Load unimodal weights\n(path_mri, path_pet)" as IFB4
+  usecase "Train intermediate-fusion\n(MyNet_Multimodal; 3 optimizers;\npaired+mri+pet loops)" as IFB5
+  usecase "Validate & test\n(ValidationStep, validateOnTest)" as IFB6
+  usecase "Predict & export per-mode\n(prediction_on_Test: mri, pet, both)" as IFB7
+  usecase "Persist artefacts\n(.pth, .mat, .txt, .png, .csv)" as IFB8
+}
+
+package "Multimodal_IF_ResNet" {
+  usecase "Configure run\n( seeds, fold, paths )" as IFR1
+  usecase "Assemble datasets\n(only MRI, only PET, paired)\n(getFilesForSubset,\nMy_DatasetFolder,\nMy_DatasetFolderMultiModal)" as IFR2
+  usecase "Define transforms\n(ToTensor3D, NormalizeInRange,\nRandomAffine, Resize3D)" as IFR3
+  usecase "Load MedicalNet pretrain\n(MyMedicalResNet)" as IFR4
+  usecase "Load unimodal weights\n(path_mri, path_pet)" as IFR5
+  usecase "Train intermediate-fusion\n(MyNet_MultimodalMedicalNet;\nmultigpu MRI/PET; 3 optimizers)" as IFR6
+  usecase "Validate & test\n(ValidationStep, validateOnTest)" as IFR7
+  usecase "Predict & export per-mode\n(prediction_on_Test: mri, pet, both)" as IFR8
+  usecase "Persist artefacts\n(.pth, .mat, .txt, .png, .csv)" as IFR9
+}
+
+' Interactions — EF BasicNet
+User --> EFB1
+EFB1 --> XLSX
+EFB2 --> FS
+EFB3 --> FS
+EFB4 --> FS
+EFB5 --> GPU
+EFB6 --> GPU
+EFB7 --> GPU
+EFB8 --> FS
+
+' Interactions — EF ResNet
+User --> EFR1
+EFR1 --> XLSX
+EFR2 --> FS
+EFR3 --> FS
+WEIGHTS --> EFR4
+EFR5 --> GPU
+EFR6 --> GPU
+EFR7 --> GPU
+EFR8 --> FS
+
+' Interactions — IF BasicNet
+User --> IFB1
+IFB1 --> XLSX
+IFB2 --> FS
+IFB3 --> FS
+WEIGHTS --> IFB4
+IFB5 --> GPU
+IFB6 --> GPU
+IFB7 --> GPU
+IFB8 --> FS
+
+' Interactions — IF ResNet
+User --> IFR1
+IFR1 --> XLSX
+IFR2 --> FS
+IFR3 --> FS
+WEIGHTS --> IFR4
+WEIGHTS --> IFR5
+IFR6 --> GPU
+IFR7 --> GPU
+IFR8 --> GPU
+IFR9 --> FS
+@enduml

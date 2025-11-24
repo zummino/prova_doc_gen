@@ -1,0 +1,159 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+' External systems and libraries
+component "Filesystem\n(.mat volumes, directories,\nweights, outputs)" as FS
+component "Excel FoldForCV.xlsx" as XLS
+component "PyTorch" as TORCH
+component "Torchvision" as TV
+component "TorchIO" as TIO
+component "NumPy" as NUMPY
+component "SciPy (io)" as SCIPY
+component "Pandas" as PANDAS
+component "scikit-learn\n(balanced_accuracy)" as SKLEARN
+component "Matplotlib" as MPL
+component "Python Stdlib\n(os, time, math, random)" as PYSTD
+
+' =================== EF — BasicNet ===================
+package "Multimodal_EF_BasicNet" {
+  [MAIN_TRAIN.py\nEntry point\n- sets hyperparams\n- selects device\n- builds outputPath\n- reads folds\n- calls Main_train] as EF_B_MAIN
+
+  [TrainFunctions.py\nTrainer\n- Main_train()\n- train_loop_validation()\n- ValidationStep()\n- validateOnTest()\n- prediction_on_Test()] as EF_B_TRAIN
+
+  [Utils_volume.py\nData IO + Datasets\n- readVolume_*()\n- np_computeMinMax()/MeanStd\n- My_DatasetFolderMultiModal\n- BalanceConcatDataset\n- print_number_files()] as EF_B_UTIL
+
+  [FunctionalClassificationSimple.py\nModels + Transforms\n- ToTensor3D, NormalizeInRange,\n  Resize3D, RandomZFlip\n- MyNet_Simple, MyNet_ResNet,\n  layers (Down, Identity,...)\n- helpers: rangeNormalization*, np_imadjust] as EF_B_FUNC
+}
+
+' =================== EF — MedicalNet ResNet ===================
+package "Multimodal_EF_ResNet" {
+  [MAIN_TRAIN.py\nEntry point] as EF_R_MAIN
+  [TrainFunctions.py\nTrainer] as EF_R_TRAIN
+  [Utils_volume.py\nData IO + Datasets\n- My_DatasetFolderMultiModal] as EF_R_UTIL
+  [FunctionalClassificationSimple.py\nModels + Transforms\n- MyMedicalResNet (wraps resnet)\n- ToTensor3D, NormalizeInRange,\n  Resize3D, RandomZFlip\n- helpers: rangeNormalization*, np_imadjust] as EF_R_FUNC
+  [resnet.py\n3D ResNet backbone\n- resnet10/18/34/50/..\n- ResNet blocks (Basic, Bottleneck)] as EF_R_RES
+}
+
+' =================== IF — BasicNet ===================
+package "Multimodal_IF_BasicNet" {
+  [MAIN_TRAIN.py\nEntry point] as IF_B_MAIN
+  [TrainFunctions.py\nTrainer\n- tri-stream training loop\n  (mri, pet, paired)\n- validate per stream] as IF_B_TRAIN
+  [Utils_volume.py\nData IO + Datasets\n- My_DatasetFolder (uni)\n- My_DatasetFolderMultiModal (paired)\n- BalanceConcatDataset\n- readVolume_*(), np_compute*] as IF_B_UTIL
+  [FunctionalClassificationSimple.py\nModels + Transforms\n- MyNet_Multimodal\n  (mri_part, pet_part,\n   fc_mri, fc_pet, fc_both)\n- MyNet_Simple/MyNet_ResNet\n- ToTensor3D, NormalizeInRange,\n  Resize3D, RandomZFlip\n- helpers] as IF_B_FUNC
+}
+
+' =================== IF — MedicalNet ResNet ===================
+package "Multimodal_IF_ResNet" {
+  [MAIN_TRAIN.py\nEntry point] as IF_R_MAIN
+  [TrainFunctions.py\nTrainer\n- tri-stream training loop\n- save per-submodule weights] as IF_R_TRAIN
+  [Utils_volume.py\nData IO + Datasets\n- My_DatasetFolder (uni)\n- My_DatasetFolderMultiModal (paired)\n- BalanceConcatDataset\n- readVolume_*(), np_compute*] as IF_R_UTIL
+  [FunctionalClassificationSimple.py\nModels + Transforms\n- MyNet_MultimodalMedicalNet\n  (mri_part, pet_part,\n   fc_mri, fc_pet, fc_both)\n  multi-GPU routing (cuda:0/1)\n- MyMedicalResNet\n- ToTensor3D, NormalizeInRange,\n  Resize3D, RandomZFlip\n- helpers] as IF_R_FUNC
+  [resnet.py\n3D ResNet backbone] as IF_R_RES
+}
+
+' =================== Intra-package dependencies ===================
+' EF BasicNet
+EF_B_MAIN --> EF_B_TRAIN : calls Main_train()
+EF_B_TRAIN ..> EF_B_UTIL : uses datasets, IO, stats
+EF_B_TRAIN ..> EF_B_FUNC : uses models/transforms
+EF_B_UTIL ..> EF_B_FUNC : imports transforms/helpers
+
+' EF ResNet
+EF_R_MAIN --> EF_R_TRAIN
+EF_R_TRAIN ..> EF_R_UTIL
+EF_R_TRAIN ..> EF_R_FUNC
+EF_R_FUNC ..> EF_R_RES : uses resnet*
+EF_R_UTIL ..> EF_R_FUNC
+
+' IF BasicNet
+IF_B_MAIN --> IF_B_TRAIN
+IF_B_TRAIN ..> IF_B_UTIL
+IF_B_TRAIN ..> IF_B_FUNC
+IF_B_UTIL ..> IF_B_FUNC
+
+' IF ResNet
+IF_R_MAIN --> IF_R_TRAIN
+IF_R_TRAIN ..> IF_R_UTIL
+IF_R_TRAIN ..> IF_R_FUNC
+IF_R_FUNC ..> IF_R_RES
+IF_R_UTIL ..> IF_R_FUNC
+
+' =================== External dependencies ===================
+' All entry points read folds and configure runs
+EF_B_MAIN ..> XLS
+EF_R_MAIN ..> XLS
+IF_B_MAIN ..> XLS
+IF_R_MAIN ..> XLS
+
+' Data ingestion from filesystem (.mat volumes under ONLY_MRI_final, ONLY_PET_final, PAIRED_final)
+EF_B_UTIL ..> FS : read *.mat\nlist directories
+EF_R_UTIL ..> FS : read *.mat\nlist directories
+IF_B_UTIL ..> FS : read *.mat\nlist directories
+IF_R_UTIL ..> FS : read *.mat\nlist directories
+
+' Outputs (logs, checkpoints, plots, CSV)
+EF_B_TRAIN ..> FS : write *.pth, *.mat,\n*.txt, *.png, *.csv
+EF_R_TRAIN ..> FS : write *.pth, *.mat,\n*.txt, *.png, *.csv
+IF_B_TRAIN ..> FS : write *.pth, *.mat,\n*.txt, *.png, *.csv
+IF_R_TRAIN ..> FS : write *.pth (per-part),\n*.mat, *.txt, *.png, *.csv
+
+' Pretrained weights (MedicalNet, unimodal)
+EF_R_MAIN ..> FS : load pretrained\nweights for resnet
+IF_R_MAIN ..> FS : load MedicalNet\nand unimodal weights
+IF_B_MAIN ..> FS : load unimodal\nbest_model_weights.pth
+
+' Libraries (shared)
+EF_B_MAIN ..> PANDAS
+EF_R_MAIN ..> PANDAS
+IF_B_MAIN ..> PANDAS
+IF_R_MAIN ..> PANDAS
+
+EF_B_FUNC ..> TORCH
+EF_R_FUNC ..> TORCH
+IF_B_FUNC ..> TORCH
+IF_R_FUNC ..> TORCH
+
+EF_B_TRAIN ..> TORCH
+EF_R_TRAIN ..> TORCH
+IF_B_TRAIN ..> TORCH
+IF_R_TRAIN ..> TORCH
+
+EF_B_UTIL ..> SCIPY
+EF_R_UTIL ..> SCIPY
+IF_B_UTIL ..> SCIPY
+IF_R_UTIL ..> SCIPY
+
+EF_B_FUNC ..> NUMPY
+EF_R_FUNC ..> NUMPY
+IF_B_FUNC ..> NUMPY
+IF_R_FUNC ..> NUMPY
+
+EF_B_TRAIN ..> SKLEARN
+EF_R_TRAIN ..> SKLEARN
+IF_B_TRAIN ..> SKLEARN
+IF_R_TRAIN ..> SKLEARN
+
+EF_B_MAIN ..> PYSTD
+EF_R_MAIN ..> PYSTD
+IF_B_MAIN ..> PYSTD
+IF_R_MAIN ..> PYSTD
+
+' Visualization and transforms
+EF_B_TRAIN ..> MPL
+EF_R_TRAIN ..> MPL
+IF_B_TRAIN ..> MPL
+IF_R_TRAIN ..> MPL
+
+EF_B_FUNC ..> TV
+EF_R_FUNC ..> TV
+IF_B_FUNC ..> TV
+IF_R_FUNC ..> TV
+
+EF_B_FUNC ..> TIO
+EF_R_FUNC ..> TIO
+IF_B_FUNC ..> TIO
+IF_R_FUNC ..> TIO
+@enduml

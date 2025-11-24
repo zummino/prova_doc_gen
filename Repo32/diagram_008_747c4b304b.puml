@@ -1,0 +1,52 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "STEP1_2_PBPK.TrainFunction" {
+
+  package "torch.utils.data" {
+    class Dataset
+  }
+
+  class My_DatasetFolder {
+    +__init__(root, transform, is_valid_file, list_classes, loader)
+    +__len__()
+    -__get_samples()
+    +__getitem__(index)
+  }
+  My_DatasetFolder -|> Dataset
+
+  class CSV_DatasetFolder {
+    +__init__(root, csv_path, imagePath, exclude_list, transform, include_list, list_classes, valid_class)
+    +__len__()
+    -__get_samples()
+    +__getitem__(index)
+  }
+  CSV_DatasetFolder -|> Dataset
+
+  class Random_Horizontal_Flip_both {
+    +__init__(p=0.5)
+    +__call__(tupla)
+    +__repr__()
+  }
+
+  class Random_Vertical_Flip_both {
+    +__init__(p=0.5)
+    +__call__(tupla)
+    +__repr__()
+  }
+
+  class Random_Rotation_both {
+    +__init__(p=0.5, n=1)
+    +__call__(tupla)
+    +__repr__()
+  }
+
+  class ToTensor_both {
+    +__init__()
+    +__call__(tupla)
+    +__repr__()
+  }
+}
+
+@enduml

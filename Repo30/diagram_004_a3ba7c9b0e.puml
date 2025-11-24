@@ -1,0 +1,116 @@
+@startuml
+package "torch" {
+  abstract class "nn.Module" as TorchModule
+  abstract class "utils.data.Dataset" as TorchDataset
+  abstract class "utils.data.ConcatDataset" as TorchConcatDataset
+}
+
+package "Multimodal_EF_ResNet" {
+
+  package "Transforms" {
+    class ToTensor3D {
+    }
+
+    class RandomZFlip { 
+      +p: float
+    }
+
+    class NormalizeInRange {
+      +supLim: float
+      +infLim: float
+      +type_n: str
+      +max_p: float
+      +min_p: float
+    }
+
+    class Resize3D {
+      +size: tuple
+      +enable_zoom: bool
+    }
+
+    ToTensor3D -up-|> TorchModule
+    RandomZFlip -up-|> TorchModule
+    NormalizeInRange -up-|> TorchModule
+    Resize3D -up-|> TorchModule
+  }
+
+  package "MedicalNet" {
+    class BasicBlock {
+      -conv1
+      -bn1
+      -relu
+      -conv2
+      -bn2
+      -downsample
+      -stride
+      -dilation
+    }
+
+    class Bottleneck {
+      -conv1
+      -bn1
+      -conv2
+      -bn2
+      -conv3
+      -bn3
+      -relu
+      -downsample
+      -stride
+      -dilation
+    }
+
+    class ResNet {
+      -inplanes: int
+      -no_cuda: bool
+      -conv1
+      -bn1
+      -relu
+      -maxpool
+      -layer1
+      -layer2
+      -layer3
+      -layer4
+      -conv_seg
+    }
+
+    BasicBlock -up-|> TorchModule
+    Bottleneck -up-|> TorchModule
+    ResNet -up-|> TorchModule
+
+    ResNet ..> BasicBlock : blocks
+    ResNet ..> Bottleneck : blocks
+  }
+
+  package "Model" {
+    class MyMedicalResNet {
+      -backBone: ResNet
+      -net_dict: dict
+      -end: nn.Sequential
+    }
+
+    MyMedicalResNet -up-|> TorchModule
+    MyMedicalResNet *-- ResNet : backBone
+    MyMedicalResNet *-- "nn.Sequential" : end
+  }
+
+  package "Data" {
+    class My_DatasetFolderMultiModal {
+      +root: str
+      +transform_mri
+      +transform_pet
+      +is_valid_file
+      +list_classes: list
+      +samples: list
+      +readerMRI
+      +readerPET
+    }
+
+    class BalanceConcatDataset {
+    }
+
+    My_DatasetFolderMultiModal -up-|> TorchDataset
+    BalanceConcatDataset -up-|> TorchConcatDataset
+  }
+}
+
+@enduml

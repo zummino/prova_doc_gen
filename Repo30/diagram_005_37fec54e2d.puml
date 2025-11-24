@@ -1,0 +1,130 @@
+@startuml
+package "torch" {
+  abstract class "nn.Module" as TorchModule
+  abstract class "utils.data.Dataset" as TorchDataset
+  abstract class "utils.data.ConcatDataset" as TorchConcatDataset
+}
+
+package "Multimodal_IF_BasicNet" {
+  package "Transforms" {
+    class ToTensor3D { }
+    class RandomZFlip { 
++p: float 
+}
+    class NormalizeInRange { 
++supLim: float; 
++infLim: float; 
++type_n: str; 
++max_p: float; 
++min_p: float }
+    class Resize3D { 
++size: tuple; 
++enable_zoom: bool 
+}
+    ToTensor3D -up-|> TorchModule
+    RandomZFlip -up-|> TorchModule
+    NormalizeInRange -up-|> TorchModule
+    Resize3D -up-|> TorchModule
+  }
+
+  package "Model blocks" {
+    class Down { 
+-step: nn.Sequential
+ }
+    class Identity { 
+-step: nn.Sequential; 
+-join: nn.ReLU
+ }
+    class Dim_Red {
+ -step: nn.Sequential 
+}
+    class Branch { 
+-step: nn.Sequential
+ }
+    class ReductionBlock {
+ -step2_a: Dim_Red; 
+-step2_b: Branch; 
+-join: nn.ReLU 
+}
+    Down -up-|> TorchModule
+    Identity -up-|> TorchModule
+    Dim_Red -up-|> TorchModule
+    Branch -up-|> TorchModule
+    ReductionBlock -up-|> TorchModule
+  }
+
+  package "Models" {
+    class MyNet_Simple {
+      +printb: bool
+      -down1..down6: Down
+      -avg: nn.AdaptiveAvgPool3d
+      -end: nn.Sequential
+    }
+    class MyNet_ResNet {
+      +printb: bool
+      -step1: Down
+      -maxPool: nn.MaxPool3d
+      -identity1_1, identity1, identity2..identity5: Identity
+      -step2..step5: ReductionBlock
+      -avg: nn.AdaptiveAvgPool3d
+      -end: nn.Sequential
+    }
+    class EmptyLayer { }
+    class MyNet_Multimodal {
+      +model_type: str
+      +path_mri: str
+      +printb: bool
+      -mri_part
+      -pet_part
+      -fc_mri
+      -fc_pet
+      -fc_both: nn.Sequential
+    }
+    MyNet_Simple -up-|> TorchModule
+    MyNet_ResNet -up-|> TorchModule
+    EmptyLayer -up-|> TorchModule
+    MyNet_Multimodal -up-|> TorchModule
+
+    MyNet_Simple *-- Down
+    MyNet_Simple *-- "nn.AdaptiveAvgPool3d"
+    MyNet_Simple *-- "nn.Sequential"
+
+    MyNet_ResNet *-- Down
+    MyNet_ResNet *-- Identity
+    MyNet_ResNet *-- ReductionBlock
+    MyNet_ResNet *-- "nn.AdaptiveAvgPool3d"
+    MyNet_ResNet *-- "nn.Sequential"
+
+    ' Multimodal composition
+    MyNet_Multimodal *-- MyNet_Simple : mri_part/pet_part (when model_type == "standard")
+    MyNet_Multimodal *-- MyNet_ResNet : mri_part/pet_part (when model_type != "standard")
+    MyNet_Multimodal *-- EmptyLayer : replace end
+    MyNet_Multimodal *-- "nn.Sequential" : fc_both
+  }
+
+  package "Data" {
+    class My_DatasetFolder {
+      +root: str
+      +transform
+      +is_valid_file
+      +list_classes: list
+      +samples: list
+      +readVolume
+    }
+    class My_DatasetFolderMultiModal {
+      +root: str
+      +transform_mri
+      +transform_pet
+      +is_valid_file
+      +list_classes: list
+      +samples: list
+      +readerMRI
+      +readerPET
+    }
+    class BalanceConcatDataset { }
+    My_DatasetFolder -up-|> TorchDataset
+    My_DatasetFolderMultiModal -up-|> TorchDataset
+    BalanceConcatDataset -up-|> TorchConcatDataset
+  }
+}
+@enduml

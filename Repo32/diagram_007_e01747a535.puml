@@ -1,0 +1,211 @@
+@startuml
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "STEP1_2_PBPK.Utils" {
+
+  package "torch.nn" {
+    abstract class nn.Module
+  }
+
+  package "torch.utils.data" {
+    class ConcatDataset
+  }
+
+  class PBPKLoss {
+    +__init__(opt)
+    +contrast_agent_concentration_measured(si, si_t)
+    +forward(output_mask, roi, curve, weight=1)
+  }
+  PBPKLoss -|> nn.Module
+
+  class BiasReduceLoss {
+    +__init__(opt)
+    +forward(x, y, weight=1)
+  }
+  BiasReduceLoss -|> nn.Module
+
+  class TotalVaryLoss {
+    +__init__(opt)
+    +forward(x, weight=1)
+  }
+  TotalVaryLoss -|> nn.Module
+
+  class SelfSmoothLoss2 {
+    +__init__(opt)
+    +forward(x, weight=1)
+  }
+  SelfSmoothLoss2 -|> nn.Module
+
+  class waspMixer {
+    +__init__(opt, ngpu=1, nin=128, nout=128)
+    +forward(input)
+  }
+  waspMixer -|> nn.Module
+
+  class waspIntrinsicComposer {
+    +__init__(opt)
+    +forward(shading, albedo)
+  }
+  waspIntrinsicComposer -|> nn.Module
+
+  class waspWarper {
+    +__init__(opt)
+    +forward(input_img, input_grid)
+  }
+  waspWarper -|> nn.Module
+
+  class waspGridSpatialIntegral {
+    +__init__(opt)
+    +forward(input_diffgrid)
+  }
+  waspGridSpatialIntegral -|> nn.Module
+
+  class waspEncoder {
+    +__init__(opt, ngpu=1, nc=1, ndf=32, ndim=128)
+    +forward(input)
+  }
+  waspEncoder -|> nn.Module
+
+  class waspDecoder {
+    +__init__(opt, ngpu=1, nz=128, nc=1, ngf=32, lb=0, ub=1)
+    +forward(input)
+  }
+  waspDecoder -|> nn.Module
+
+  class waspDecoderTanh {
+    +__init__(opt, ngpu=1, nz=128, nc=1, ngf=32, lb=0, ub=1)
+    +forward(input)
+  }
+  waspDecoderTanh -|> nn.Module
+
+  class Encoders {
+    +__init__(opt)
+    +forward(input)
+  }
+  Encoders -|> nn.Module
+  Encoders *-- waspEncoder
+  Encoders *-- waspMixer : zImixer
+  Encoders *-- waspMixer : zWmixer
+
+  class Encoders_Intrinsic {
+    +__init__(opt)
+    +forward(input)
+  }
+  Encoders_Intrinsic -|> nn.Module
+  Encoders_Intrinsic *-- waspEncoder
+  Encoders_Intrinsic *-- waspMixer : zSmixer
+  Encoders_Intrinsic *-- waspMixer : zTmixer
+  Encoders_Intrinsic *-- waspMixer : zWmixer
+
+  class DenseBlockEncoder {
+    +__init__(n_channels, n_convs, activation, args)
+    +forward(inputs)
+  }
+  DenseBlockEncoder -|> nn.Module
+
+  class DenseBlockDecoder {
+    +__init__(n_channels, n_convs, activation, args)
+    +forward(inputs)
+  }
+  DenseBlockDecoder -|> nn.Module
+
+  class DenseTransitionBlockEncoder {
+    +__init__(n_channels_in, n_channels_out, mp, activation, args)
+    +forward(inputs)
+  }
+  DenseTransitionBlockEncoder -|> nn.Module
+
+  class DenseTransitionBlockDecoder {
+    +__init__(n_channels_in, n_channels_out, activation, args)
+    +forward(inputs)
+  }
+  DenseTransitionBlockDecoder -|> nn.Module
+
+  class waspDenseEncoder {
+    +__init__(opt, ngpu=1, nc=1, ndf=32, ndim=128, activation, args, f_activation, f_args)
+    +forward(input)
+  }
+  waspDenseEncoder -|> nn.Module
+  waspDenseEncoder *-- DenseBlockEncoder
+  waspDenseEncoder *-- DenseTransitionBlockEncoder
+
+  class waspDenseDecoder {
+    +__init__(opt, ngpu=1, nz=128, nc=1, ngf=32, lb=0, ub=1, activation, args, f_activation, f_args)
+    +forward(inputs)
+  }
+  waspDenseDecoder -|> nn.Module
+  waspDenseDecoder *-- DenseBlockDecoder
+  waspDenseDecoder *-- DenseTransitionBlockDecoder
+
+  class Dense_Encoders {
+    +__init__(opt)
+    +forward(input)
+  }
+  Dense_Encoders -|> nn.Module
+  Dense_Encoders *-- waspDenseEncoder
+  Dense_Encoders *-- waspMixer : zImixer
+  Dense_Encoders *-- waspMixer : zWmixer
+
+  class Dense_Encoders_Intrinsic {
+    +__init__(opt)
+    +forward(input)
+  }
+  Dense_Encoders_Intrinsic -|> nn.Module
+  Dense_Encoders_Intrinsic *-- waspDenseEncoder
+  Dense_Encoders_Intrinsic *-- waspMixer : zSmixer
+  Dense_Encoders_Intrinsic *-- waspMixer : zTmixer
+  Dense_Encoders_Intrinsic *-- waspMixer : zWmixer
+
+  class DecodersIntegralWarper2 {
+    +__init__(opt)
+    +forward(zI, zW, basegrid)
+  }
+  DecodersIntegralWarper2 -|> nn.Module
+  DecodersIntegralWarper2 *-- waspDecoder : decoderI
+  DecodersIntegralWarper2 *-- waspDecoderTanh : decoderW
+  DecodersIntegralWarper2 *-- waspWarper
+  DecodersIntegralWarper2 *-- waspGridSpatialIntegral
+
+  class DecodersIntegralWarper2_Intrinsic {
+    +__init__(opt)
+    +forward(zS, zT, zW, basegrid, roi)
+  }
+  DecodersIntegralWarper2_Intrinsic -|> nn.Module
+  DecodersIntegralWarper2_Intrinsic *-- waspDecoder : decoderS
+  DecodersIntegralWarper2_Intrinsic *-- waspDecoder : decoderT
+  DecodersIntegralWarper2_Intrinsic *-- waspDecoderTanh : decoderW
+  DecodersIntegralWarper2_Intrinsic *-- waspIntrinsicComposer
+  DecodersIntegralWarper2_Intrinsic *-- waspWarper
+  DecodersIntegralWarper2_Intrinsic *-- waspGridSpatialIntegral
+
+  class Dense_DecodersIntegralWarper2 {
+    +__init__(opt)
+    +forward(zI, zW, basegrid)
+  }
+  Dense_DecodersIntegralWarper2 -|> nn.Module
+  Dense_DecodersIntegralWarper2 *-- waspDenseDecoder : decoderI
+  Dense_DecodersIntegralWarper2 *-- waspDenseDecoder : decoderW
+  Dense_DecodersIntegralWarper2 *-- waspWarper
+  Dense_DecodersIntegralWarper2 *-- waspGridSpatialIntegral
+
+  class Dense_DecodersIntegralWarper2_Intrinsic {
+    +__init__(opt)
+    +forward(zS, zT, zW, basegrid, roi)
+  }
+  Dense_DecodersIntegralWarper2_Intrinsic -|> nn.Module
+  Dense_DecodersIntegralWarper2_Intrinsic *-- waspDenseDecoder : decoderS
+  Dense_DecodersIntegralWarper2_Intrinsic *-- waspDenseDecoder : decoderT
+  Dense_DecodersIntegralWarper2_Intrinsic *-- waspDenseDecoder : decoderW
+  Dense_DecodersIntegralWarper2_Intrinsic *-- waspIntrinsicComposer
+  Dense_DecodersIntegralWarper2_Intrinsic *-- waspWarper
+  Dense_DecodersIntegralWarper2_Intrinsic *-- waspGridSpatialIntegral
+
+  class BalanceConcatDataset {
+    +__init__(datasets)
+  }
+  BalanceConcatDataset -|> ConcatDataset
+}
+
+@enduml

@@ -1,0 +1,42 @@
+@startuml
+left to right direction
+
+actor "CLI User" as User
+actor "File System" as FS
+
+rectangle "PBPK DAE+CNN Training Suite" {
+  usecase "Prepare PBPK features\n(FitPBPK/Main.py)\n- fit TK_Weinmann\n- save FINAL_DATASET\n- save IMG_FIT plots" as UC_Fit
+  usecase "Configure run via CLI args\n(argparse in main.py)" as UC_Config
+  usecase "Load datasets\n(MAT in FINAL_DATASET,\nCSV df_benign.csv/df_malignant.csv)" as UC_Load
+  usecase "Train models (DAE+CNN steps)\n(step1/2/3/4 pipelines)" as UC_Train
+  usecase "Validate during training\n(validate, validateOnTest)" as UC_Val
+  usecase "Save checkpoints and best weights\n(torch.save, check_point.mat)" as UC_Save
+  usecase "Test on held-out set\n(validateOnTest)" as UC_Test
+  usecase "Export test predictions CSV\n(predictedOnTest -> BestTable.csv)" as UC_Export
+  usecase "Plot training/validation curves\n(drawPlot -> PNGs)" as UC_Plot
+  usecase "Load pretrained/init weights\n(torch.load from Results/)" as UC_Init
+}
+
+' Primary user interactions
+User --> UC_Config
+User --> UC_Fit
+User --> UC_Train
+User --> UC_Test
+User --> UC_Plot
+
+' Internal behavior relationships grounded in code
+UC_Config --> UC_Init
+UC_Train --> UC_Load
+UC_Train --> UC_Save
+UC_Train --> UC_Val
+UC_Test --> UC_Export
+
+' External system interactions (file IO)
+UC_Fit --> FS
+UC_Load --> FS
+UC_Save --> FS
+UC_Init --> FS
+UC_Export --> FS
+UC_Plot --> FS
+
+@enduml

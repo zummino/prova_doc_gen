@@ -1,0 +1,130 @@
+@startuml
+
+skinparam componentStyle rectangle
+skinparam defaultTextAlignment center
+
+package "FitPBPK" {
+  [FitPBPK/Main.py] as FitMain
+  [FitPBPK/Utils.py] as FitUtils
+}
+
+package "STEP1_2_PBPK" {
+  [STEP1_2_PBPK/main.py] as S12Main
+  [STEP1_2_PBPK/TrainFunction.py] as S12Train
+  [STEP1_2_PBPK/Utils.py] as S12Utils
+}
+
+package "STEP1_2_3_PBPK" {
+  [STEP1_2_3_PBPK/main.py] as S123Main
+  [STEP1_2_3_PBPK/TrainFunction.py] as S123Train
+  [STEP1_2_3_PBPK/Utils.py] as S123Utils
+}
+
+package "STEP1_2_3_4_PBPK" {
+  [STEP1_2_3_4_PBPK/main.py] as S1234Main
+  [STEP1_2_3_4_PBPK/TrainFunction.py] as S1234Train
+  [STEP1_2_3_4_PBPK/Utils.py] as S1234Utils
+}
+
+package "External Libraries" {
+  [PyTorch] as PyTorch
+  [Torchvision] as Torchvision
+  [NumPy] as NumPy
+  [SciPy] as SciPy
+  [Matplotlib] as Matplotlib
+  [Pandas] as Pandas
+  [CUDA/cuDNN] as CUDA
+}
+
+[File System] as FS
+
+' FitPBPK pipeline
+FitMain --> FitUtils
+FitMain ..> FS : read basic_data/<class>/*.mat\nwrite FINAL_DATASET/<class>/*.mat\nwrite IMG_FIT/<class>/*.png
+FitUtils ..> NumPy
+FitUtils ..> SciPy
+FitUtils ..> Matplotlib
+FitUtils ..> FS
+
+' STEP1_2_3_4 training pipeline
+S1234Main --> S1234Train
+S1234Train --> S1234Utils
+S1234Main ..> FS : read PUBLIC_DATA/FINAL_DATASET\nread CSVs\ nwrite Results/*
+S1234Train ..> Torchvision
+S1234Train ..> PyTorch
+S1234Train ..> Pandas
+S1234Train ..> Matplotlib
+S1234Train ..> FS
+S1234Utils ..> PyTorch
+S1234Utils ..> Torchvision
+S1234Utils ..> NumPy
+S1234Utils ..> SciPy
+S1234Utils ..> Matplotlib
+S1234Utils ..> Pandas
+S1234Utils ..> CUDA
+
+' STEP1_2_3 training pipeline
+S123Main --> S123Train
+S123Train --> S123Utils
+S123Main ..> FS : read PUBLIC_DATA/FINAL_DATASET\nread CSVs\ nwrite Results/*
+S123Train ..> Torchvision
+S123Train ..> PyTorch
+S123Train ..> Pandas
+S123Train ..> Matplotlib
+S123Train ..> FS
+S123Utils ..> PyTorch
+S123Utils ..> Torchvision
+S123Utils ..> NumPy
+S123Utils ..> SciPy
+S123Utils ..> Matplotlib
+S123Utils ..> Pandas
+S123Utils ..> CUDA
+
+' STEP1_2 training pipeline
+S12Main --> S12Train
+S12Train --> S12Utils
+S12Main ..> FS : read PUBLIC_DATA/FINAL_DATASET\nread CSVs\ nwrite Results/*
+S12Train ..> Torchvision
+S12Train ..> PyTorch
+S12Train ..> Pandas
+S12Train ..> Matplotlib
+S12Train ..> FS
+S12Utils ..> PyTorch
+S12Utils ..> Torchvision
+S12Utils ..> NumPy
+S12Utils ..> SciPy
+S12Utils ..> Matplotlib
+S12Utils ..> Pandas
+S12Utils ..> CUDA
+
+' Notes exposing notable internal constructs (from code)
+note right of S1234Utils
+  Provides:
+   - PBPKLoss, BiasReduceLoss, TotalVaryLoss, SelfSmoothLoss2
+   - Encoders_Intrinsic / Dense_Encoders_Intrinsic
+   - DecodersIntegralWarper2_Intrinsic / Dense_*
+   - wasp* (Encoder/Decoder/Mixer/Warper/Composer/GridIntegral)
+   - Utils: getBaseGrid, setCuda, setAsVariable
+end note
+
+note right of S1234Train
+  Defines:
+   - My_DatasetFolder, CSV_DatasetFolder
+   - buildModel (alexnet, resnet34, vgg19, mobilenet_v2)
+   - Training steps: step1..step4, validate, validateOnTest
+   - predictedOnTest, drawPlot
+   - Data transforms (flip, rotate, ToTensor_both)
+end note
+
+note right of FitUtils
+  Provides:
+   - AIF and TK/ETK models (Weinmann, Parker)
+   - Contrast_Agent_Concentration_misured
+   - fitting_mediano (curve_fit)
+   - plot_curve
+end note
+
+' Explicit data dependency between FitPBPK outputs and training inputs (via FS)
+FitMain ..> FS : produces FINAL_DATASET used by all STEP* pipelines
+
+@enduml
